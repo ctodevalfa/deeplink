@@ -304,6 +304,11 @@
     <button id="generate-btn">Сформировать deeplink-кнопки</button>
 
     <div class="banks" id="banks"></div>
+    
+    <button id="clear-preferences" style="margin-top: 12px; padding: 8px 16px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; display: none;">
+      Очистить предпочтения
+    </button>
+    
     <div class="hint">Запуск deeplink-ов корректно работает при открытии страницы через HTTP-сервер.</div>
   </div>
 
@@ -321,6 +326,64 @@
     const $tinkoffMember = document.getElementById('tinkoff-member');
     const $transborder = document.getElementById('transborder');
     const $banksWrap = document.getElementById('banks');
+    const $clearBtn = document.getElementById('clear-preferences');
+
+    // Определение типа устройства
+    function getDeviceInfo() {
+      const ua = navigator.userAgent;
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const isAndroid = /Android/i.test(ua);
+      const isMobile = isIOS || isAndroid || /Mobile|Tablet/i.test(ua);
+      
+      return {
+        isIOS,
+        isAndroid,
+        isMobile,
+        platform: isIOS ? 'ios' : isAndroid ? 'android' : 'desktop'
+      };
+    }
+
+    // Работа с куки
+    function setCookie(name, value, days = 30) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+
+    // Получить предпочтительную ссылку для конкретного банка и устройства
+    function getPreferredLink(bank) {
+      const device = getDeviceInfo();
+      const cookieName = `preferred_link_${bank}_${device.platform}`;
+      return getCookie(cookieName);
+    }
+
+    // Сохранить успешную ссылку для конкретного банка и устройства
+    function savePreferredLink(bank, link) {
+      const device = getDeviceInfo();
+      const cookieName = `preferred_link_${bank}_${device.platform}`;
+      setCookie(cookieName, link);
+      console.log(`Сохранена предпочтительная ссылка для ${bank} на ${device.platform}:`, link);
+    }
+
+    // Проверить есть ли сохраненные ссылки для любого банка
+    function hasAnyPreferredLinks() {
+      const device = getDeviceInfo();
+      return Object.keys(BANKS).some(bank => {
+        const cookieName = `preferred_link_${bank}_${device.platform}`;
+        return getCookie(cookieName) !== null;
+      });
+    }
 
     document.getElementById('generate-btn').addEventListener('click', () => {
       const acct = $account.value.trim();
@@ -333,43 +396,149 @@
       // Очистить предыдущие кнопки
       $banksWrap.innerHTML = '';
 
+      const device = getDeviceInfo();
+
       Object.entries(BANKS).forEach(([code, cfg]) => {
         const btn = document.createElement('button');
         btn.className = `bank-btn ${cfg.css}`;
-        btn.innerHTML = `<object data="${cfg.icon}" type="image/svg+xml" style="width:100%;height:100%;pointer-events:none;"></object>`;
+        
+        // Проверяем есть ли сохраненная ссылка для этого банка
+        const preferredLink = getPreferredLink(code);
+        const hasPreferredLink = !!preferredLink;
+        const preferredIndicator = hasPreferredLink ? '<div style="position:absolute;top:4px;right:4px;background:#00C851;color:white;border-radius:50%;width:16px;height:16px;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:bold;z-index:1;">✓</div>' : '';
+        
+        btn.innerHTML = `
+          ${preferredIndicator}
+          <object data="${cfg.icon}" type="image/svg+xml" style="width:100%;height:100%;pointer-events:none;"></object>
+        `;
+        
+        if (hasPreferredLink) {
+          btn.title = `${cfg.label} (есть сохраненная ссылка для ${device.platform})`;
+        }
+        
         btn.addEventListener('click', () => handleBankClick(code));
         $banksWrap.appendChild(btn);
       });
+
+      if (hasAnyPreferredLinks()) {
+        $clearBtn.style.display = 'block';
+      } else {
+        $clearBtn.style.display = 'none';
+      }
+    });
+
+    // Обработчик очистки предпочтений
+    $clearBtn.addEventListener('click', () => {
+      const device = getDeviceInfo();
+      let clearedCount = 0;
+      
+      // Очищаем сохраненные ссылки для всех банков
+      Object.keys(BANKS).forEach(bank => {
+        const cookieName = `preferred_link_${bank}_${device.platform}`;
+        if (getCookie(cookieName)) {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          clearedCount++;
+        }
+      });
+      
+      console.log(`Очищено ${clearedCount} сохраненных ссылок для ${device.platform}`);
+      $clearBtn.style.display = 'none';
+      
+      // Перегенерируем кнопки без индикаторов
+      const acct = $account.value.trim();
+      const amt = $amount.value.trim();
+      if (acct && amt) {
+        document.getElementById('generate-btn').click();
+      }
     });
 
     function handleBankClick(bank) {
       // Если выбран Сбер и стоит чекбокс «трансграничный» – переключаем код банка
       const effectiveBank = bank === 'ru_sberbank' && $transborder.checked ? 'ru_sberbank_trans' : bank;
 
-      const params = {
+      const baseParams = {
         phone: $account.value.trim(),
         amount: $amount.value.trim(),
-        bank: effectiveBank,
         bankMemberId: $tinkoffMember.value,
         isTransborder: $transborder.checked
       };
 
-      const links = generateDeepLinks(params);
-      attemptLinks(links);
+      // Проверяем, есть ли предпочтительная ссылка для этого банка
+      const preferredLink = getPreferredLink(effectiveBank);
+      const device = getDeviceInfo();
+      
+      console.log(`Устройство: ${device.platform}, предпочтительная ссылка для ${effectiveBank}:`, preferredLink);
+
+      // Генерируем все ссылки для выбранного банка
+      const allLinks = generateDeepLinks({...baseParams, bank: effectiveBank});
+      
+      let orderedLinks = [];
+      
+      // Если есть предпочтительная ссылка, ставим её первой
+      if (preferredLink) {
+        orderedLinks.push(preferredLink);
+        // Добавляем остальные ссылки, исключая предпочтительную
+        const otherLinks = allLinks.filter(link => link !== preferredLink);
+        orderedLinks = [...orderedLinks, ...otherLinks];
+        console.log(`Предпочтительная ссылка будет попробована первой, затем ${otherLinks.length} других ссылок`);
+      } else {
+        orderedLinks = allLinks;
+        console.log(`Нет предпочтительной ссылки, пробуем все ${allLinks.length} ссылок по порядку`);
+      }
+      
+      attemptLinks(orderedLinks, effectiveBank);
     }
 
     // Попытаться открыть каждую ссылку по очереди, пока не сработает
-    function attemptLinks(links) {
+    function attemptLinks(links, currentBank) {
       let idx = 0;
-      const delay = 1000; // мс между попытками
+      let stopped = false;
+      const delay = 1500; // мс между попытками
+      const device = getDeviceInfo();
 
       const tryNext = () => {
-        if (idx >= links.length) return;
+        if (stopped || idx >= links.length) {
+          if (!stopped) {
+            console.log('Все ссылки перепробованы, ни одна не сработала');
+          }
+          return;
+        }
+        
         const url = links[idx++];
-        console.log('Try', url);
+        console.log(`Попытка ${idx}/${links.length}:`, url);
 
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isIOS) {
+        const startTime = Date.now();
+        
+        // Обработчик для отслеживания ухода со страницы (успешное открытие приложения)
+        const handleVisibilityChange = () => {
+          if (document.hidden || document.visibilityState === 'hidden') {
+            console.log(`✅ Приложение успешно открылось! Сохраняем ссылку: ${url}`);
+            savePreferredLink(currentBank, url);
+            stopped = true;
+            cleanup();
+          }
+        };
+
+        const handleBlur = () => {
+          // Если страница потеряла фокус быстро после клика, вероятно приложение открылось
+          if (Date.now() - startTime < 500) {
+            console.log(`✅ Приложение успешно открылось (blur)! Сохраняем ссылку: ${url}`);
+            savePreferredLink(currentBank, url);
+            stopped = true;
+            cleanup();
+          }
+        };
+
+        const cleanup = () => {
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+          window.removeEventListener('blur', handleBlur);
+        };
+
+        // Добавляем обработчики
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', handleBlur);
+
+        if (device.isIOS) {
           window.location = url;
         } else {
           const iframe = document.createElement('iframe');
@@ -378,7 +547,14 @@
           document.body.appendChild(iframe);
           setTimeout(() => iframe.remove(), delay - 100);
         }
-        setTimeout(tryNext, delay);
+
+        // Убираем обработчики через некоторое время и пробуем следующую ссылку
+        setTimeout(() => {
+          cleanup();
+          if (!stopped) {
+            tryNext();
+          }
+        }, delay);
       };
 
       tryNext();
