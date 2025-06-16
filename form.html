@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deeplink Generator</title>
+  <style>
+    :root {
+      --bg: #f9fafb;
+      --card-bg: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --primary: #2563eb;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 420px;
+      padding: 32px 24px 40px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 0 0 24px;
+      text-align: center;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      background: #fff;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+
+    #generate-btn {
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .2s;
+    }
+    #generate-btn:hover { background: #1e4ed8; }
+
+    .banks {
+      margin-top: 32px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .bank-btn {
+      padding: 14px 16px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      cursor: pointer;
+      transition: transform .12s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .bank-btn:hover { transform: translateY(-2px); }
+    .bank-btn img {
+      width: 24px;
+      height: auto;
+    }
+    .tinkoff { background: #ffdd2d; color: #000; }
+    .sber { background: #21a038; }
+    .sber-trans { background: #ffa726; }
+    .vtb { background: #0072c6; }
+
+    .hint {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    /* checkbox row */
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .row input { margin: 0; }
+    .row span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Сформировать deeplink-ссылки</h1>
+
+    <label for="account">Телефон «+7…» или № карты</label>
+    <input id="account" type="text" placeholder="+7 999 123-45-67" />
+
+    <label for="amount">Сумма, ₽</label>
+    <input id="amount" type="number" step="0.01" placeholder="1000.00" />
+
+    <label for="tinkoff-member">bankMemberId (Tinkoff)</label>
+    <select id="tinkoff-member">
+      <option value="10076">10076 – по умолчанию</option>
+      <option value="10075">10075</option>
+      <option value="10074">10074</option>
+    </select>
+
+    <label class="row" style="cursor:pointer;">
+      <input id="transborder" type="checkbox" />
+      <span>Трансграничный перевод</span>
+    </label>
+
+    <button id="generate-btn">Сформировать deeplink-кнопки</button>
+
+    <div class="banks" id="banks"></div>
+    <div class="hint">Запуск deeplink-ов корректно работает при открытии страницы через HTTP-сервер.</div>
+  </div>
+
+  <script type="module">
+    import { generateDeepLinks } from './deep.js';
+
+    const BANKS = {
+      ru_tinkoff: { label: 'Tinkoff Pay', css: 'tinkoff', icon: 'https://upload.wikimedia.org/wikipedia/commons/1/19/Tinkoff_logo_2024.svg' },
+      ru_sberbank: { label: 'Sber Pay', css: 'sber', icon: 'https://upload.wikimedia.org/wikipedia/commons/5/5b/Logo_Sberbank.svg' },
+      ru_sberbank_trans: { label: 'Sber Abroad', css: 'sber-trans', icon: 'https://upload.wikimedia.org/wikipedia/commons/5/5b/Logo_Sberbank.svg' },
+      ru_vtb: { label: 'VTB Pay', css: 'vtb', icon: 'https://upload.wikimedia.org/wikipedia/commons/d/d6/VTB_Logo_2018.svg' }
+    };
+
+    const $account = document.getElementById('account');
+    const $amount = document.getElementById('amount');
+    const $tinkoffMember = document.getElementById('tinkoff-member');
+    const $transborder = document.getElementById('transborder');
+    const $banksWrap = document.getElementById('banks');
+
+    document.getElementById('generate-btn').addEventListener('click', () => {
+      const acct = $account.value.trim();
+      const amt = $amount.value.trim();
+      if (!acct || !amt) {
+        alert('Введите номер телефона/карты и сумму');
+        return;
+      }
+
+      // Очистить предыдущие кнопки
+      $banksWrap.innerHTML = '';
+
+      Object.entries(BANKS).forEach(([code, cfg]) => {
+        const btn = document.createElement('button');
+        btn.className = `bank-btn ${cfg.css}`;
+        btn.innerHTML = `<img src="${cfg.icon}" alt="" /> <span>${cfg.label}</span>`;
+        btn.addEventListener('click', () => handleBankClick(code));
+        $banksWrap.appendChild(btn);
+      });
+    });
+
+    function handleBankClick(bank) {
+      const params = {
+        phone: $account.value.trim(),
+        amount: $amount.value.trim(),
+        bank,
+        bankMemberId: $tinkoffMember.value,
+        isTransborder: $transborder.checked
+      };
+
+      const links = generateDeepLinks(params);
+      attemptLinks(links);
+    }
+
+    // Попытаться открыть каждую ссылку по очереди, пока не сработает
+    function attemptLinks(links) {
+      let idx = 0;
+      const delay = 1000; // мс между попытками
+
+      const tryNext = () => {
+        if (idx >= links.length) return;
+        const url = links[idx++];
+        console.log('Try', url);
+
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isIOS) {
+          window.location = url;
+        } else {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = url;
+          document.body.appendChild(iframe);
+          setTimeout(() => iframe.remove(), delay - 100);
+        }
+        setTimeout(tryNext, delay);
+      };
+
+      tryNext();
+    }
+  </script>
+</body>
+</html> 
