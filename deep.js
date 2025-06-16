@@ -25,6 +25,17 @@ function normaliseAccount(value) {
     const clear = String(value).replace(/[^0-9]/g, '');
     return clear.startsWith('8') && clear.length === 11 ? '7' + clear.slice(1) : clear;
   }
+
+/** Normalise phone for desktop links */
+function normalizePhone(value) {
+    return normaliseAccount(value);
+  }
+
+/** Convert amount to cents */
+function toCents(amount) {
+    const num = typeof amount === 'number' ? amount : parseFloat(String(amount).replace(',', '.'));
+    return Math.round(num * 100);
+  }
   
   /** Format «rubles.cents» без тысячных */
   function formatAmount(amount) {
@@ -127,6 +138,34 @@ function normaliseAccount(value) {
   
     // Deduplicate in case builder returns repeats
     return Array.from(new Set(links));
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  // 2. DESKTOP (HTTPS) LINKS
+  /////////////////////////////////////////////////////////////////////////
+
+  /**
+   * generateDesktopLink – возвращает HTTPS‑URL, пригодный для открытия на ПК,
+   * или null, если банк не предоставляет web‑форму.
+   */
+  export function generateDesktopLink({ phone, bank, isTransborder }) {
+    const p = normalizePhone(phone);
+    switch (bank) {
+      case "ru_vtb":
+        return `https://online.vtb.ru/i/${isTransborder === "true" || isTransborder === true ? `phone/TJ/73/?phoneNumber=${p}&deeplink=true` : `ppl/${p}`}`;
+      // Сбер и Тинькофф web‑форм не предоставляют – возвращаем null, чтобы фронт показал QR.
+      default:
+        return null;
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  // 3. (optional) QR URL helper – standard FPS dynamic QR
+  /////////////////////////////////////////////////////////////////////////
+  export function buildQrUrl({ phone, amount, bankMemberId = "10076" }) {
+    const sum = toCents(amount);
+    // простая реализация без CRC, подходит для тестов / демо
+    return `https://qr.nspk.ru/AD${bankMemberId}${Date.now().toString(36).toUpperCase()}?type=02&bank=${bankMemberId}&sum=${sum}&phone=+${phone}`;
   }
   
   export default generateDeepLinks;

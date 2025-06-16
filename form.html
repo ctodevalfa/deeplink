@@ -106,6 +106,17 @@
       font-weight: 400;
     }
 
+    input:disabled, select:disabled {
+      background: #f8f9fa;
+      color: #6c757d;
+      border-color: #e9ecef;
+      cursor: not-allowed;
+    }
+
+    input:disabled::placeholder {
+      color: #adb5bd;
+    }
+
     /* checkbox component */
     .checkbox-wrapper {
       margin: 20px 0 28px;
@@ -251,6 +262,15 @@
       line-height: 1.4;
     }
 
+    code {
+      background: #f1f3f4;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-size: 11px;
+      color: #333;
+    }
+
     @media (max-width: 480px) {
       body {
         padding: 20px 16px;
@@ -303,17 +323,25 @@
 
     <button id="generate-btn">Сформировать deeplink-кнопки</button>
 
+    <button id="copy-link-btn" style="margin-top: 8px; padding: 8px 16px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; color: #6c757d; font-size: 14px; cursor: pointer; display: none;">
+      🔒 Скопировать read-only ссылку
+    </button>
+
     <div class="banks" id="banks"></div>
     
     <button id="clear-preferences" style="margin-top: 12px; padding: 8px 16px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; display: none;">
       Очистить предпочтения
     </button>
     
-    <div class="hint">Запуск deeplink-ов корректно работает при открытии страницы через HTTP-сервер.</div>
+    <div class="hint" id="device-hint">Запуск deeplink-ов корректно работает при открытии страницы через HTTP-сервер.</div>
+    
+    <div class="hint" style="margin-top: 8px; font-size: 12px; color: #999;">
+      💡 Поддерживаемые URL параметры: <code>?phone=79991234567&amount=1000&bankMemberId=10076&transborder=true&disable=true</code>
+    </div>
   </div>
 
   <script type="module">
-    import { generateDeepLinks } from './deep.js';
+    import { generateDeepLinks, generateDesktopLink, buildQrUrl } from './deep.js';
 
     const BANKS = {
       ru_tinkoff: { label: 'T-Pay', css: 'tinkoff', icon: './tpaybutton.svg' },
@@ -327,6 +355,8 @@
     const $transborder = document.getElementById('transborder');
     const $banksWrap = document.getElementById('banks');
     const $clearBtn = document.getElementById('clear-preferences');
+    const $hint = document.getElementById('device-hint');
+    const $copyLinkBtn = document.getElementById('copy-link-btn');
 
     // Определение типа устройства
     function getDeviceInfo() {
@@ -361,29 +391,368 @@
       return null;
     }
 
-    // Получить предпочтительную ссылку для конкретного банка и устройства
-    function getPreferredLink(bank) {
+    // Извлечь схему из ссылки (без параметров)
+    function extractSchemePattern(link) {
+      // Для Сбера извлекаем только схему и базовый путь
+      if (link.includes('sbolonline://') || link.includes('sberbankonline://') || 
+          link.includes('budgetonline-ios://') || link.includes('ios-app-smartonline://') ||
+          link.includes('app-online-ios://') || link.includes('btripsexpenses://')) {
+        
+        // Убираем параметры, оставляем только схему и путь
+        const match = link.match(/^([^:]+:\/\/[^?]+)/);
+        return match ? match[1] : link;
+      }
+      
+      // Для Тинькофф и других банков тоже убираем параметры
+      if (link.includes('://')) {
+        const match = link.match(/^([^:]+:\/\/[^?]+)/);
+        return match ? match[1] : link;
+      }
+      
+      // Для других банков возвращаем как есть
+      return link;
+    }
+
+    // Найти подходящую ссылку по схеме
+    function findLinkByScheme(links, schemePattern) {
+      return links.find(link => {
+        const linkScheme = extractSchemePattern(link);
+        return linkScheme === schemePattern;
+      });
+    }
+
+    // Получить предпочтительную схему для конкретного банка и устройства
+    function getPreferredScheme(bank) {
       const device = getDeviceInfo();
-      const cookieName = `preferred_link_${bank}_${device.platform}`;
+      const cookieName = `preferred_scheme_${bank}_${device.platform}`;
       return getCookie(cookieName);
     }
 
-    // Сохранить успешную ссылку для конкретного банка и устройства
-    function savePreferredLink(bank, link) {
+    // Сохранить успешную схему для конкретного банка и устройства
+    function savePreferredScheme(bank, link) {
       const device = getDeviceInfo();
-      const cookieName = `preferred_link_${bank}_${device.platform}`;
-      setCookie(cookieName, link);
-      console.log(`Сохранена предпочтительная ссылка для ${bank} на ${device.platform}:`, link);
+      const cookieName = `preferred_scheme_${bank}_${device.platform}`;
+      const scheme = extractSchemePattern(link);
+      setCookie(cookieName, scheme);
+      console.log(`Сохранена предпочтительная схема для ${bank} на ${device.platform}:`, scheme);
     }
 
-    // Проверить есть ли сохраненные ссылки для любого банка
-    function hasAnyPreferredLinks() {
+    // Показать QR-код для desktop
+    function showQrCode(params) {
+      const qrUrl = buildQrUrl({
+        phone: params.phone,
+        amount: params.amount,
+        bankMemberId: params.bankMemberId
+      });
+
+      // Создаем модальное окно с QR-кодом
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      `;
+
+      modal.innerHTML = `
+        <div style="background: white; padding: 32px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+          <h3 style="margin: 0 0 16px 0; color: #333;">QR-код для оплаты</h3>
+          <div style="margin: 20px 0;">
+            <div id="qr-container" style="display: flex; justify-content: center; margin: 20px 0;">
+              <div style="width: 200px; height: 200px; border: 2px dashed #ddd; display: flex; align-items: center; justify-content: center; color: #666;">
+                Генерация QR-кода...
+              </div>
+            </div>
+          </div>
+          <p style="color: #666; font-size: 14px; margin: 16px 0;">
+            Отсканируйте QR-код в мобильном приложении банка
+          </p>
+          <button id="close-qr" style="background: #007AFF; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px;">
+            Закрыть
+          </button>
+          <div style="margin-top: 12px;">
+            <a href="${qrUrl}" target="_blank" style="color: #007AFF; text-decoration: none; font-size: 14px;">
+              Открыть ссылку напрямую
+            </a>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+
+      // Генерируем QR-код
+      generateQrCode(qrUrl, modal.querySelector('#qr-container'));
+
+      // Обработчики закрытия
+      modal.querySelector('#close-qr').onclick = () => modal.remove();
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+    }
+
+    // Простая генерация QR-кода через внешний сервис
+    function generateQrCode(url, container) {
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+      
+      const img = document.createElement('img');
+      img.src = qrApiUrl;
+      img.style.cssText = 'width: 200px; height: 200px; border-radius: 8px;';
+      img.onload = () => {
+        container.innerHTML = '';
+        container.appendChild(img);
+      };
+      img.onerror = () => {
+        container.innerHTML = `
+          <div style="padding: 20px; color: #666;">
+            <p>Ошибка генерации QR-кода</p>
+            <p style="font-size: 12px; word-break: break-all;">${url}</p>
+          </div>
+        `;
+      };
+    }
+
+    // Проверить есть ли сохраненные схемы для любого банка
+    function hasAnyPreferredSchemes() {
       const device = getDeviceInfo();
       return Object.keys(BANKS).some(bank => {
-        const cookieName = `preferred_link_${bank}_${device.platform}`;
+        const cookieName = `preferred_scheme_${bank}_${device.platform}`;
         return getCookie(cookieName) !== null;
       });
     }
+
+    // Обновляем подсказку в зависимости от устройства
+    function updateDeviceHint() {
+      const device = getDeviceInfo();
+      if (device.platform === 'desktop') {
+        $hint.textContent = 'На компьютере: ВТБ откроется в браузере, для остальных банков будет показан QR-код.';
+      } else if (device.isIOS) {
+        $hint.textContent = 'На iOS: deeplink-ы будут пытаться открыть банковские приложения.';
+      } else if (device.isAndroid) {
+        $hint.textContent = 'На Android: deeplink-ы будут пытаться открыть банковские приложения.';
+      } else {
+        $hint.textContent = 'Запуск deeplink-ов корректно работает при открытии страницы через HTTP-сервер.';
+      }
+    }
+
+    // Работа с URL параметрами
+    function getUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        phone: params.get('phone') || params.get('account') || '',
+        amount: params.get('amount') || '',
+        bankMemberId: params.get('bankMemberId') || params.get('member') || '10076',
+        transborder: params.get('transborder') === 'true' || params.get('transborder') === '1',
+        disable: params.get('disable') === 'true' || params.get('disable') === '1'
+      };
+    }
+
+    function updateUrlParams() {
+      const params = new URLSearchParams();
+      
+      const phone = $account.value.trim();
+      const amount = $amount.value.trim();
+      const bankMemberId = $tinkoffMember.value;
+      const transborder = $transborder.checked;
+
+      if (phone) params.set('phone', phone);
+      if (amount) params.set('amount', amount);
+      if (bankMemberId !== '10076') params.set('bankMemberId', bankMemberId);
+      if (transborder) params.set('transborder', 'true');
+
+      const newUrl = params.toString() ? 
+        `${window.location.pathname}?${params.toString()}` : 
+        window.location.pathname;
+      
+      // Обновляем URL без перезагрузки страницы
+      window.history.replaceState({}, '', newUrl);
+
+      // Показываем/скрываем кнопку копирования
+      updateCopyLinkButton(phone, amount);
+    }
+
+    function updateCopyLinkButton(phone, amount) {
+      if (phone && amount) {
+        $copyLinkBtn.style.display = 'block';
+      } else {
+        $copyLinkBtn.style.display = 'none';
+      }
+    }
+
+    async function copyCurrentLink() {
+      // Создаем URL с параметром disable=true
+      const url = new URL(window.location.href);
+      url.searchParams.set('disable', 'true');
+      const disabledUrl = url.toString();
+      
+      try {
+        await navigator.clipboard.writeText(disabledUrl);
+        
+        // Временно меняем текст кнопки
+        const originalText = $copyLinkBtn.textContent;
+        $copyLinkBtn.textContent = '✅ Скопировано!';
+        $copyLinkBtn.style.background = '#d4edda';
+        $copyLinkBtn.style.color = '#155724';
+        
+        setTimeout(() => {
+          $copyLinkBtn.textContent = originalText;
+          $copyLinkBtn.style.background = '#f8f9fa';
+          $copyLinkBtn.style.color = '#6c757d';
+        }, 2000);
+        
+        console.log('Ссылка скопирована:', disabledUrl);
+      } catch (err) {
+        console.error('Ошибка копирования:', err);
+        
+        // Fallback для старых браузеров
+        const textArea = document.createElement('textarea');
+        textArea.value = disabledUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        $copyLinkBtn.textContent = '✅ Скопировано!';
+        setTimeout(() => {
+          $copyLinkBtn.textContent = '🔒 Скопировать read-only ссылку';
+        }, 2000);
+      }
+    }
+
+    function fillFormFromUrl() {
+      const params = getUrlParams();
+      
+      if (params.phone) {
+        $account.value = params.phone;
+      }
+      if (params.amount) {
+        $amount.value = params.amount;
+      }
+      if (params.bankMemberId) {
+        $tinkoffMember.value = params.bankMemberId;
+      }
+      if (params.transborder) {
+        $transborder.checked = params.transborder;
+      }
+
+      // Применяем disabled режим если нужно
+      if (params.disable) {
+        applyDisabledMode();
+      }
+
+      // Если есть параметры, автоматически генерируем кнопки
+      if (params.phone && params.amount) {
+        console.log('Автозаполнение формы из URL параметров:', params);
+        // Небольшая задержка для корректного отображения
+        setTimeout(() => {
+          document.getElementById('generate-btn').click();
+        }, 100);
+      }
+    }
+
+    function applyDisabledMode() {
+      // Делаем поля формы только для чтения
+      $account.disabled = true;
+      $amount.disabled = true;
+      $tinkoffMember.disabled = true;
+      $transborder.disabled = true;
+      
+      // Скрываем кнопку генерации и копирования
+      document.getElementById('generate-btn').style.display = 'none';
+      $copyLinkBtn.style.display = 'none';
+      
+      // Добавляем индикатор режима только для чтения
+      const readOnlyIndicator = document.createElement('div');
+      readOnlyIndicator.style.cssText = `
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+        color: #856404;
+        font-size: 14px;
+        text-align: center;
+        font-weight: 500;
+      `;
+      readOnlyIndicator.innerHTML = '🔒 Режим только для просмотра - данные нельзя изменить';
+      
+      // Вставляем индикатор после заголовка
+      const title = document.querySelector('h1');
+      title.parentNode.insertBefore(readOnlyIndicator, title.nextSibling);
+      
+      // Автоматически генерируем кнопки банков
+      setTimeout(() => {
+        generateBankButtons();
+      }, 100);
+      
+      console.log('Применен режим только для чтения');
+    }
+
+    function generateBankButtons() {
+      const acct = $account.value.trim();
+      const amt = $amount.value.trim();
+      if (!acct || !amt) return;
+
+      // Очистить предыдущие кнопки
+      $banksWrap.innerHTML = '';
+
+      const device = getDeviceInfo();
+
+      Object.entries(BANKS).forEach(([code, cfg]) => {
+        const btn = document.createElement('button');
+        btn.className = `bank-btn ${cfg.css}`;
+        
+        // Проверяем есть ли сохраненная схема для этого банка
+        const preferredScheme = getPreferredScheme(code);
+        const hasPreferredScheme = !!preferredScheme;
+        const preferredIndicator = hasPreferredScheme ? '<div style="position:absolute;top:4px;right:4px;background:#00C851;color:white;border-radius:50%;width:16px;height:16px;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:bold;z-index:1;">✓</div>' : '';
+        
+        btn.innerHTML = `
+          ${preferredIndicator}
+          <object data="${cfg.icon}" type="image/svg+xml" style="width:100%;height:100%;pointer-events:none;"></object>
+        `;
+        
+        if (hasPreferredScheme) {
+          btn.title = `${cfg.label} (есть предпочтительная схема для ${device.platform})`;
+        }
+        
+        btn.addEventListener('click', () => handleBankClick(code));
+        $banksWrap.appendChild(btn);
+      });
+
+      if (hasAnyPreferredSchemes()) {
+        $clearBtn.style.display = 'block';
+      } else {
+        $clearBtn.style.display = 'none';
+      }
+    }
+
+    // Заполняем форму из URL при загрузке
+    fillFormFromUrl();
+
+    // Обновляем подсказку при загрузке
+    updateDeviceHint();
+
+    // Обновляем состояние кнопки копирования при загрузке
+    updateCopyLinkButton($account.value.trim(), $amount.value.trim());
+
+    // Добавляем обработчики для автоматического обновления URL (только если не disabled режим)
+    const params = getUrlParams();
+    if (!params.disable) {
+      $account.addEventListener('input', updateUrlParams);
+      $amount.addEventListener('input', updateUrlParams);
+      $tinkoffMember.addEventListener('change', updateUrlParams);
+      $transborder.addEventListener('change', updateUrlParams);
+    }
+
+    // Обработчик для кнопки копирования ссылки
+    $copyLinkBtn.addEventListener('click', copyCurrentLink);
 
     document.getElementById('generate-btn').addEventListener('click', () => {
       const acct = $account.value.trim();
@@ -402,25 +771,25 @@
         const btn = document.createElement('button');
         btn.className = `bank-btn ${cfg.css}`;
         
-        // Проверяем есть ли сохраненная ссылка для этого банка
-        const preferredLink = getPreferredLink(code);
-        const hasPreferredLink = !!preferredLink;
-        const preferredIndicator = hasPreferredLink ? '<div style="position:absolute;top:4px;right:4px;background:#00C851;color:white;border-radius:50%;width:16px;height:16px;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:bold;z-index:1;">✓</div>' : '';
+        // Проверяем есть ли сохраненная схема для этого банка
+        const preferredScheme = getPreferredScheme(code);
+        const hasPreferredScheme = !!preferredScheme;
+        const preferredIndicator = hasPreferredScheme ? '<div style="position:absolute;top:4px;right:4px;background:#00C851;color:white;border-radius:50%;width:16px;height:16px;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:bold;z-index:1;">✓</div>' : '';
         
         btn.innerHTML = `
           ${preferredIndicator}
           <object data="${cfg.icon}" type="image/svg+xml" style="width:100%;height:100%;pointer-events:none;"></object>
         `;
         
-        if (hasPreferredLink) {
-          btn.title = `${cfg.label} (есть сохраненная ссылка для ${device.platform})`;
+        if (hasPreferredScheme) {
+          btn.title = `${cfg.label} (есть предпочтительная схема для ${device.platform})`;
         }
         
         btn.addEventListener('click', () => handleBankClick(code));
         $banksWrap.appendChild(btn);
       });
 
-      if (hasAnyPreferredLinks()) {
+      if (hasAnyPreferredSchemes()) {
         $clearBtn.style.display = 'block';
       } else {
         $clearBtn.style.display = 'none';
@@ -432,16 +801,16 @@
       const device = getDeviceInfo();
       let clearedCount = 0;
       
-      // Очищаем сохраненные ссылки для всех банков
+      // Очищаем сохраненные схемы для всех банков
       Object.keys(BANKS).forEach(bank => {
-        const cookieName = `preferred_link_${bank}_${device.platform}`;
+        const cookieName = `preferred_scheme_${bank}_${device.platform}`;
         if (getCookie(cookieName)) {
           document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
           clearedCount++;
         }
       });
       
-      console.log(`Очищено ${clearedCount} сохраненных ссылок для ${device.platform}`);
+      console.log(`Очищено ${clearedCount} сохраненных схем для ${device.platform}`);
       $clearBtn.style.display = 'none';
       
       // Перегенерируем кнопки без индикаторов
@@ -463,27 +832,56 @@
         isTransborder: $transborder.checked
       };
 
-      // Проверяем, есть ли предпочтительная ссылка для этого банка
-      const preferredLink = getPreferredLink(effectiveBank);
       const device = getDeviceInfo();
       
-      console.log(`Устройство: ${device.platform}, предпочтительная ссылка для ${effectiveBank}:`, preferredLink);
+      // Для desktop устройств пробуем сначала HTTPS-ссылку
+      if (device.platform === 'desktop') {
+        const desktopLink = generateDesktopLink({
+          phone: baseParams.phone,
+          bank: effectiveBank,
+          isTransborder: baseParams.isTransborder
+        });
+
+        if (desktopLink) {
+          console.log(`Desktop: открываем HTTPS-ссылку для ${effectiveBank}:`, desktopLink);
+          window.open(desktopLink, '_blank');
+          return;
+        } else {
+          // Если нет desktop-ссылки, показываем QR-код
+          console.log(`Desktop: ${effectiveBank} не поддерживает web-форму, показываем QR-код`);
+          showQrCode(baseParams);
+          return;
+        }
+      }
+
+      // Для мобильных устройств используем deeplink-логику
+      console.log(`Устройство: ${device.platform}, банк: ${effectiveBank}`);
+
+      // Проверяем, есть ли предпочтительная схема для этого банка
+      const preferredScheme = getPreferredScheme(effectiveBank);
+      console.log(`Предпочтительная схема для ${effectiveBank}:`, preferredScheme);
 
       // Генерируем все ссылки для выбранного банка
       const allLinks = generateDeepLinks({...baseParams, bank: effectiveBank});
       
       let orderedLinks = [];
       
-      // Если есть предпочтительная ссылка, ставим её первой
-      if (preferredLink) {
-        orderedLinks.push(preferredLink);
-        // Добавляем остальные ссылки, исключая предпочтительную
-        const otherLinks = allLinks.filter(link => link !== preferredLink);
-        orderedLinks = [...orderedLinks, ...otherLinks];
-        console.log(`Предпочтительная ссылка будет попробована первой, затем ${otherLinks.length} других ссылок`);
+      // Если есть предпочтительная схема, ищем подходящую ссылку и ставим её первой
+      if (preferredScheme) {
+        const preferredLink = findLinkByScheme(allLinks, preferredScheme);
+        if (preferredLink) {
+          orderedLinks.push(preferredLink);
+          // Добавляем остальные ссылки, исключая предпочтительную
+          const otherLinks = allLinks.filter(link => link !== preferredLink);
+          orderedLinks = [...orderedLinks, ...otherLinks];
+          console.log(`Найдена ссылка по предпочтительной схеме, будет попробована первой, затем ${otherLinks.length} других ссылок`);
+        } else {
+          orderedLinks = allLinks;
+          console.log(`Предпочтительная схема не найдена среди текущих ссылок, пробуем все ${allLinks.length} ссылок по порядку`);
+        }
       } else {
         orderedLinks = allLinks;
-        console.log(`Нет предпочтительной ссылки, пробуем все ${allLinks.length} ссылок по порядку`);
+        console.log(`Нет предпочтительной схемы, пробуем все ${allLinks.length} ссылок по порядку`);
       }
       
       attemptLinks(orderedLinks, effectiveBank);
@@ -512,8 +910,8 @@
         // Обработчик для отслеживания ухода со страницы (успешное открытие приложения)
         const handleVisibilityChange = () => {
           if (document.hidden || document.visibilityState === 'hidden') {
-            console.log(`✅ Приложение успешно открылось! Сохраняем ссылку: ${url}`);
-            savePreferredLink(currentBank, url);
+            console.log(`✅ Приложение успешно открылось! Сохраняем схему: ${url}`);
+            savePreferredScheme(currentBank, url);
             stopped = true;
             cleanup();
           }
@@ -522,8 +920,8 @@
         const handleBlur = () => {
           // Если страница потеряла фокус быстро после клика, вероятно приложение открылось
           if (Date.now() - startTime < 500) {
-            console.log(`✅ Приложение успешно открылось (blur)! Сохраняем ссылку: ${url}`);
-            savePreferredLink(currentBank, url);
+            console.log(`✅ Приложение успешно открылось (blur)! Сохраняем схему: ${url}`);
+            savePreferredScheme(currentBank, url);
             stopped = true;
             cleanup();
           }
