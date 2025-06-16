@@ -1,11 +1,11 @@
 /**
- * sbpDeepLinks.js – helper for building P2P‑payment deeplinks for Russian bank apps (SBP/FPS).
+ * sbpDeepLinks.js – helper for building P2P‑payment deeplinks for Russian bank apps (SBP/FPS).
  *
  * Supported banks:
- *   • ru_tinkoff            – Тинькофф Банк (много alias‑схем под iOS)
- *   • ru_sberbank           – СберБанк Онлайн
- *   • ru_sberbank_trans     – СберБанк – перевод за границу (transborder)
- *   • ru_vtb                – ВТБ Онлайн
+ *   • ru_tinkoff            – Тинькофф Банк (много alias‑схем под iOS)
+ *   • ru_sberbank           – СберБанк Онлайн
+ *   • ru_sberbank_trans     – СберБанк – перевод за границу (transborder)
+ *   • ru_vtb                – ВТБ Онлайн
  *
  * API
  *   generateDeepLinks({
@@ -14,7 +14,7 @@
  *     bank: 'ru_tinkoff' | 'ru_sberbank' | 'ru_sberbank_trans' | 'ru_vtb',
  *     bankMemberId?: string,  // для Тинькофф остаётся в query
  *     isTransborder?: boolean,// для ВТБ / Сбер влияет на ссылку
- *     platform?: 'ios'|'android' // если не указана — автоопределение по User‑Agent
+ *     platform?: 'ios'|'android' // если не указана — автоопределение по User‑Agent
  *   }): string[]
  *
  * Возвращает упорядоченный массив deeplink‑ов; клиент перебирает пока один не откроется.
@@ -78,29 +78,30 @@ function normaliseAccount(value) {
   function buildForSber({ phone, amount, platform }) {
     const amountQuery = `amount=${amount}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`;
     const iosSchemes = [
+      'sbolonline://',                    // основная
+      'sberbankonline://',               // alias, встречается в старых версиях
       'budgetonline-ios://sbolonline/',
-      'sbolonline://',
       'ios-app-smartonline://sbolonline/',
       'app-online-ios://',
       'btripsexpenses://sbolonline/'
     ];
   
     const androidSchemes = [
+      'sberbankonline://payments/p2p?type=phone_number&requisiteNumber=', // native custom scheme
       'intent://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
       'android-app://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
-      'intent://ru.sberbankmobile/android-app/payments/p2p?type=phone_number&requisiteNumber=',
-      'sberbankonline://payments/p2p?type=phone_number&requisiteNumber='
+      'intent://ru.sberbankmobile/android-app/payments/p2p?type=phone_number&requisiteNumber='
     ];
   
     if (platform === 'ios') {
       return iosSchemes.map(base =>
         phone.length >= 16
           ? `${base}p2ptransfer?${amountQuery}`
-          : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}`
+          : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`
       );
     }
-    // android
-    return androidSchemes.map(base => `${base}${phone}`);
+    // android – добавляем сумму
+    return androidSchemes.map(base => `${base}${phone}&amount=${amount}`);
   }
   
   const BANK_BUILDERS = {
@@ -111,7 +112,7 @@ function normaliseAccount(value) {
   };
   
   /**
-   * generateDeepLinks – public API
+   * generateDeepLinks – public API
    */
   export function generateDeepLinks({ phone, amount, bank, bankMemberId, isTransborder = false, platform }) {
     const acct = normaliseAccount(phone);
