@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Базовый тест deeplinks</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 30px;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            padding: 20px 40px;
+            margin: 10px;
+            font-size: 18px;
+            background: #007AFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn:active {
+            background: #0056CC;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .info { background: #e3f2fd; color: #1976d2; }
+        .working { background: #e8f5e8; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Базовый тест deeplinks</h1>
+    <p>Простейший тест без обработчиков событий</p>
+    
+    <div id="status" class="status info">
+        Готов к тестированию на iPhone
+    </div>
+    
+    <h3>Тест 1: Прямые ссылки (как обычные &lt;a&gt; теги)</h3>
+    <a href="sberbankonline://payments/p2p-by-phone-number?phoneNumber=79991234567" class="btn">
+        sberbankonline://
+    </a>
+    
+    <h3>Тест 2: JavaScript window.location.href (как в рабочем примере)</h3>
+    <button class="btn" onclick="testScheme('sberbankonline')">
+        sberbankonline:// (JS)
+    </button>
+    <button class="btn" onclick="testScheme('sbolonline')">
+        sbolonline:// (JS)
+    </button>
+    
+    <h3>Тест 3: Автоматический тест всех схем (цепочка как в 3333)</h3>
+    <button class="btn" onclick="autoTest()" style="background: #34C759; font-size: 20px;">
+        🚀 Автотест всех схем
+    </button>
+    
+    <script>
+        let currentIndex = 0;
+        let testRunning = false;
+        
+        const schemes = [
+            'sberbankonline',
+            'sbolonline', 
+            'iosappsmartonline',
+            'budgetonline',
+            'btripsexpenses'
+        ];
+        
+        function setStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function testScheme(scheme) {
+            setStatus(`Тестируем ${scheme}...`, 'info');
+            const url = `${scheme}://payments/p2p-by-phone-number?phoneNumber=79991234567`;
+            console.log('Переход на:', url);
+            
+            // Простейший переход без обработчиков
+            window.location.href = url;
+        }
+        
+        function autoTest() {
+            if (testRunning) {
+                setStatus('Тест уже запущен!', 'info');
+                return;
+            }
+            
+            testRunning = true;
+            currentIndex = 0;
+            setStatus('Начинаем автотест...', 'info');
+            console.log('Автотест: начинаем перебор схем');
+            
+            testNextScheme();
+        }
+        
+        function testNextScheme() {
+            if (currentIndex >= schemes.length) {
+                setStatus('Все схемы протестированы', 'working');
+                testRunning = false;
+                console.log('Автотест: все схемы завершены');
+                return;
+            }
+            
+            const scheme = schemes[currentIndex++];
+            const url = `${scheme}://payments/p2p-by-phone-number?phoneNumber=79991234567`;
+            
+            setStatus(`Автотест: ${scheme} (${currentIndex}/${schemes.length})`, 'info');
+            console.log(`Автотест ${currentIndex}/${schemes.length}: ${url}`);
+            
+            // Простейший переход как в рабочем примере
+            window.location.href = url;
+            
+            // Если через 1.5 секунды мы все еще здесь, пробуем следующую схему
+            setTimeout(() => {
+                if (testRunning) {
+                    console.log(`Схема ${scheme} не сработала, пробуем следующую`);
+                    testNextScheme();
+                }
+            }, 1500);
+        }
+        
+        // Детектируем iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+            setStatus('✅ iOS устройство обнаружено! Готов к тестированию.', 'working');
+        } else {
+            setStatus('⚠️ Этот тест оптимизирован для iOS', 'info');
+        }
+        
+        console.log('Устройство:', isIOS ? 'iOS' : 'Не iOS');
+        console.log('User Agent:', navigator.userAgent);
+    </script>
+</body>
+</html> 
