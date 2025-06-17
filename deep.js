@@ -90,85 +90,17 @@ function toCents(amount) {
       'intent://ru.sberbankmobile/android-app/transfers/abroad/foreignbank'
     ];
 
-    // Базовые параметры
-    const basicParams = `?phone=${phone}&amount=${amount}`;
-    
-    // Экспериментальные параметры для Абхазии и Амрабанк
-    const abkhaziaParams = [
-      // Стандартные форматы
-      `?country=AB&bank=AMRA&phone=${phone}&amount=${amount}`,
-      `?countryCode=AB&bankCode=AMRA&recipient=${phone}&sum=${amount}`,
-      `?destination=abkhazia&bank=amrabank&phoneNumber=${phone}&transferAmount=${amount}`,
-      `?toCountry=AB&toBank=AMRA&toPhone=${phone}&money=${amount}`,
-      `?region=abkhazia&institution=amra&contact=${phone}&value=${amount}`,
-      `?target=AB&financial=AMRA&mobile=${phone}&cash=${amount}`,
-      `?abroad=abkhazia&provider=amrabank&number=${phone}&rub=${amount}`,
-      `?foreign=AB&entity=AMRA&tel=${phone}&rubles=${amount}`,
-      
-      // Форматы с BIC/SWIFT
-      `?country=AB&bic=AMRAGEAA&phone=${phone}&amount=${amount}`,
-      `?swift=AMRAGEAA&country=abkhazia&recipient=${phone}&sum=${amount}`,
-      
-      // Форматы с ID банка
-      `?bankId=AMRA&countryId=AB&phoneNumber=${phone}&transferSum=${amount}`,
-      `?institutionId=268&countryCode=AB&mobile=${phone}&value=${amount}`,
-      
-      // Полные названия
-      `?country=abkhazia&bank=amrabank&recipientPhone=${phone}&amountRub=${amount}`,
-      `?destination=georgia-abkhazia&institution=amra-bank&tel=${phone}&money=${amount}`,
-      
-      // Форматы с кодами валют
-      `?country=AB&bank=AMRA&phone=${phone}&amount=${amount}&currency=RUB`,
-      `?countryCode=AB&bankCode=AMRA&recipient=${phone}&sum=${amount}&curr=643`,
-      
-      // Альтернативные пути
-      `/abkhazia/amrabank?phone=${phone}&amount=${amount}`,
-      `/AB/AMRA?recipient=${phone}&sum=${amount}`,
-      `/foreignbank/abkhazia?bank=amra&phone=${phone}&money=${amount}`
-    ];
+    // Пробуем добавить параметры для трансграничных переводов
+    const params = `?phone=${phone}&amount=${amount}`;
     
     if (platform === 'ios') {
-      // Сначала пробуем базовые схемы с обычными параметрами
-      const basicLinks = iosSchemes.map(scheme => `${scheme}${basicParams}`);
-      
-      // Затем экспериментальные варианты для основных схем
-      const experimentalLinks = [];
-      const mainSchemes = ['sbolonline://', 'bank100000000111://'];
-      
-      // Пробуем разные пути
-      const experimentalPaths = [
-        'abroadtransfers/foreignbank',
-        'transfers/abroad/abkhazia',
-        'international/transfer',
-        'foreign/payment',
-        'abroad/send',
-        'transfer/international',
-        'payments/abroad',
-        'send/foreign'
-      ];
-      
-      mainSchemes.forEach(baseScheme => {
-        experimentalPaths.forEach(path => {
-          abkhaziaParams.forEach(params => {
-            if (params.startsWith('/')) {
-              // Для альтернативных путей в параметрах
-              experimentalLinks.push(`${baseScheme}abroadtransfers/foreignbank${params}`);
-            } else {
-              // Для query параметров
-              experimentalLinks.push(`${baseScheme}${path}${params}`);
-            }
-          });
-        });
-      });
-      
-      return [...basicLinks, ...experimentalLinks];
+      return iosSchemes.map(scheme => `${scheme}${params}`);
     } else {
-      return androidSchemes.map(scheme => `${scheme}${basicParams}`);
+      return androidSchemes.map(scheme => `${scheme}${params}`);
     }
   }
   
   function buildForSber({ phone, amount, platform }) {
-    const amountQuery = `amount=${amount}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`;
     const iosSchemes = [
       'sbolonline://',                    // основная - самая надежная
       'sberbankonline://',               // alias, встречается в старых версиях
@@ -189,16 +121,13 @@ function toCents(amount) {
   
     if (platform === 'ios') {
       return iosSchemes.map(base => {
-        if (base === 'bank100000000111://') {
-          // Для новой iOS схемы используем формат payments...
-          return phone.length >= 16
-            ? `${base}payments/p2p?${amountQuery}`
-            : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
+        // Для телефонов используем p2p-by-phone-number
+        if (phone.length < 16) {
+          return `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
+        } else {
+          // Для карт используем p2ptransfer с полными параметрами
+          return `${base}p2ptransfer?amount=${amount}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`;
         }
-        // Для основных схем используем проверенные форматы
-        return phone.length >= 16
-          ? `${base}p2ptransfer?${amountQuery}`
-          : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
       });
     }
     // android – добавляем сумму и правильный тип
