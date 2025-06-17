@@ -154,7 +154,7 @@ function toCents(amount) {
             links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
           }
         } else {
-          // Для телефонов: ТОЧНО по вашему образцу
+          // Пробуем базовые рабочие схемы 
           if (scheme === 'budgetonline-ios') {
             links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
           } else if (scheme === 'sbolonline') {
