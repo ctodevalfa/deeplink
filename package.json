@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "playwright": "^1.53.0"
-  },
-  "type": "module",
-  "name": "deeplink-tools",
-  "version": "1.0.0"
-}
