@@ -13,6 +13,7 @@
  *   
  * ❗ ОГРАНИЧЕНИЯ:
  *   • СберБанк iOS: номер телефона подставляется ✅, сумма НЕ подставляется ❌
+ *   • СберБанк Android: используются Intent-схемы с #Intent;scheme=https;end
  *   • Пользователю нужно вручную ввести сумму в приложении
  *
  * API
@@ -89,15 +90,19 @@ function toCents(amount) {
     ];
 
     const androidSchemes = [
+      // ✅ Главная Android Intent-схема из документации  
+      'intent://ru.sberbankmobile/transfers/abroad/foreignbank#Intent;scheme=https;end',
+      
+      // Кроссплатформенные alias-схемы (работают на Android)
       'budgetonline-ios://sbolonline/abroadtransfers/foreignbank',
-      'sbolonline://abroadtransfers/foreignbank',
+      'sbolonline://abroadtransfers/foreignbank', 
       'ios-app-smartonline://sbolonline/abroadtransfers/foreignbank',
       'app-online-ios://abroadtransfers/foreignbank',
       'btripsexpenses://sbolonline/abroadtransfers/foreignbank',
-      'intent://ru.sberbankmobile/transfers/abroad/foreignbank',
-      'android-app://ru.sberbankmobile/transfers/abroad/foreignbank',
-      'intent://ru.sberbankmobile/android-app/transfers/abroad/foreignbank',
-      'sberbankonline://transfers/abroad/foreignbank'
+      'sberbankonline://abroadtransfers/foreignbank',
+      
+      // Дополнительные Android схемы
+      'android-app://ru.sberbankmobile/transfers/abroad/foreignbank'
     ];
 
     // Пробуем добавить параметры для трансграничных переводов
@@ -156,14 +161,15 @@ function toCents(amount) {
       const reqType = isCard ? 'card_number' : 'phone_number';
       const links = [];
       
-      // Добавляем схемы из оригинального обфусцированного кода для Android
+      // Добавляем схемы из документации и оригинального обфусцированного кода для Android
       // Включаем iOS-схемы которые работают и на Android
       const crossPlatformSchemes = [
-        'budgetonline-ios',    // из оригинального кода
-        'sbolonline',          // базовая схема  
-        'ios-app-smartonline', // работающая схема
-        'app-online-ios',      // из оригинального кода
-        'btripsexpenses'       // из оригинального кода
+        'sberbankonline',      // основная схема из документации
+        'sbolonline',          // базовая схема из документации  
+        'ios-app-smartonline', // iosappsmartonline из документации (работающая схема)
+        'budgetonline-ios',    // budgetonline из документации (корпоративный СБОЛ)
+        'btripsexpenses',      // btripsexpenses из документации (travel-клиент)
+        'app-online-ios'       // дополнительная схема из оригинального кода
       ];
       
       // Добавляем кроссплатформенные схемы (работают и на Android)
@@ -193,13 +199,12 @@ function toCents(amount) {
         }
       });
       
-      // Добавляем чисто Android схемы из оригинального кода
-      const pureAndroidSchemes = [
-        'sberbankonline',      // основная схема
-        'bank100000000111'     // новая схема
+      // Добавляем дополнительные Android схемы 
+      const additionalAndroidSchemes = [
+        'bank100000000111'     // дополнительная новая схема
       ];
       
-      pureAndroidSchemes.forEach(scheme => {
+      additionalAndroidSchemes.forEach(scheme => {
         if (isCard) {
           links.push(`${scheme}://p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
           links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
@@ -209,11 +214,13 @@ function toCents(amount) {
         }
       });
       
-      // Добавляем intent-схемы из оригинального кода
+      // Добавляем intent-схемы согласно документации
       const intentLinks = [
-        `intent://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
+        // ✅ Главная Intent-схема из документации (с правильным завершением)
+        `intent://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}#Intent;scheme=https;end`,
+        
+        // Дополнительные Android схемы
         `android-app://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
-        `intent://ru.sberbankmobile/android-app/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
         `sberbankonline://payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`
       ];
       
