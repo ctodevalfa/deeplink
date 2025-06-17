@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <title>Express Pay - Быстрые платежи</title>
   <style>
@@ -29,6 +29,30 @@
       box-sizing: border-box;
     }
 
+    /* Исправление для iOS Safari */
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      position: relative;
+      height: auto;
+      min-height: 100%;
+    }
+
+    /* Предотвращение автоматического зума на iOS */
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+
+    /* Использование CSS переменной для высоты viewport на iOS */
+    @supports (-webkit-touch-callout: none) {
+      body {
+        min-height: calc(var(--vh, 1vh) * 100);
+      }
+    }
+
     body {
       margin: 0;
       padding: 20px;
@@ -40,6 +64,8 @@
       align-items: flex-start;
       min-height: 100vh;
       padding-top: 40px;
+      -webkit-overflow-scrolling: touch;
+      overflow-x: hidden;
     }
 
     .card {
@@ -352,12 +378,15 @@
       body {
         padding: 16px;
         padding-top: 20px;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
       }
       
       .card {
         padding: 32px 24px;
         max-width: 100%;
         border-radius: var(--radius-sm);
+        margin-bottom: 20px;
       }
       
       .banks {
@@ -875,11 +904,39 @@
       }
     }
 
+    // Исправление для iOS Safari - предотвращение автоматического скроллинга
+    function fixIOSScrolling() {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        // Устанавливаем CSS переменную для высоты viewport
+        const setVH = () => {
+          const vh = window.innerHeight * 0.01;
+          document.documentElement.style.setProperty('--vh', `${vh}px`);
+        };
+        
+        setVH();
+        window.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', setVH);
+        
+        // Предотвращаем автоматический скроллинг при фокусе на input
+        document.addEventListener('focusin', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+            setTimeout(() => {
+              window.scrollTo(0, 0);
+            }, 100);
+          }
+        });
+      }
+    }
+
     // Заполняем форму из URL при загрузке
     fillFormFromUrl();
 
     // Обновляем подсказку при загрузке
     updateDeviceHint();
+
+    // Исправляем скроллинг на iOS
+    fixIOSScrolling();
 
     // Обновляем состояние кнопки копирования при загрузке
     updateCopyLinkButton($account.value.trim(), $amount.value.trim());
