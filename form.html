@@ -1789,8 +1789,10 @@
     function attemptLinks(links, currentBank) {
       let idx = 0;
       let stopped = false;
-      const delay = 500; // мс между попытками (как в рабочем примере)
       const device = getDeviceInfo();
+      
+      // Для iOS используем очень быстрые переходы как в рабочем примере
+      const delay = device.isIOS ? 200 : 500;
 
       const tryNext = () => {
         if (stopped || idx >= links.length) {
@@ -1804,22 +1806,27 @@
         console.log(`Попытка ${idx}/${links.length}:`, url);
 
         const startTime = Date.now();
+        let appOpened = false;
         
         // Обработчик для отслеживания ухода со страницы (успешное открытие приложения)
         const handleVisibilityChange = () => {
           if (document.hidden || document.visibilityState === 'hidden') {
-            console.log(`✅ Приложение успешно открылось! Сохраняем схему: ${url}`);
-            savePreferredScheme(currentBank, url);
-            stopped = true;
-            cleanup();
+            if (!appOpened) {
+              console.log(`✅ Приложение успешно открылось! Сохраняем схему: ${url}`);
+              savePreferredScheme(currentBank, url);
+              appOpened = true;
+              stopped = true;
+              cleanup();
+            }
           }
         };
 
         const handleBlur = () => {
           // Если страница потеряла фокус быстро после клика, вероятно приложение открылось
-          if (Date.now() - startTime < 300) {
+          if (Date.now() - startTime < 300 && !appOpened) {
             console.log(`✅ Приложение успешно открылось (blur)! Сохраняем схему: ${url}`);
             savePreferredScheme(currentBank, url);
+            appOpened = true;
             stopped = true;
             cleanup();
           }
@@ -1828,23 +1835,81 @@
         const cleanup = () => {
           document.removeEventListener('visibilitychange', handleVisibilityChange);
           window.removeEventListener('blur', handleBlur);
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+          window.removeEventListener('pagehide', handlePageHide);
+        };
+
+        // Дополнительные обработчики для iOS
+        const handleBeforeUnload = () => {
+          if (!appOpened) {
+            console.log(`✅ Приложение открылось (beforeunload)! Сохраняем схему: ${url}`);
+            savePreferredScheme(currentBank, url);
+            appOpened = true;
+            stopped = true;
+          }
+        };
+
+        const handlePageHide = () => {
+          if (!appOpened) {
+            console.log(`✅ Приложение открылось (pagehide)! Сохраняем схему: ${url}`);
+            savePreferredScheme(currentBank, url);
+            appOpened = true;
+            stopped = true;
+          }
         };
 
         // Добавляем обработчики
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('blur', handleBlur);
+        
+        // Дополнительные обработчики для iOS
+        if (device.isIOS) {
+          window.addEventListener('beforeunload', handleBeforeUnload);
+          window.addEventListener('pagehide', handlePageHide);
+        }
 
         // Пробуем открыть ссылку
         try {
           if (device.isIOS) {
-            // На iOS используем window.location (как в рабочем примере)
+            // На iOS используем прямой переход без iframe (как в рабочем примере)
+            console.log(`iOS: Прямой переход на ${url}`);
+            
+            // Проверяем, поддерживается ли схема, прежде чем делать переход
+            const scheme = url.split('://')[0];
+            
+            // Сохраняем время начала попытки
+            const redirectStartTime = Date.now();
+            
+            // Выполняем переход
             window.location.href = url;
+            
+            // Короткая проверка - если мы все еще здесь, приложение не открылось
+            setTimeout(() => {
+              const timeElapsed = Date.now() - redirectStartTime;
+              
+              // Если переход занял очень мало времени и страница не скрылась, 
+              // скорее всего схема не поддерживается
+              if (!appOpened && !stopped && timeElapsed < 100) {
+                console.log(`iOS: Схема ${scheme} не поддерживается или приложение не установлено`);
+                cleanup();
+                tryNext();
+              } else if (!appOpened && !stopped) {
+                console.log(`iOS: Приложение не открылось через ${timeElapsed}ms, пробуем следующую ссылку`);
+                cleanup();
+                tryNext();
+              }
+            }, delay);
+            
+            return; // Выходим из функции для iOS, так как переход уже выполнен
           } else {
             // На Android используем скрытый iframe
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
+            iframe.style.width = '1px';
+            iframe.style.height = '1px';
             iframe.src = url;
             document.body.appendChild(iframe);
+            
             setTimeout(() => {
               try {
                 iframe.remove();
@@ -1853,15 +1918,22 @@
           }
         } catch (e) {
           console.log(`Ошибка при открытии ${url}:`, e);
-        }
-
-        // Убираем обработчики через некоторое время и пробуем следующую ссылку
-        setTimeout(() => {
+          // Если произошла ошибка, пробуем следующую ссылку
           cleanup();
           if (!stopped) {
             tryNext();
           }
-        }, delay);
+        }
+
+        // Для Android убираем обработчики через некоторое время и пробуем следующую ссылку
+        if (!device.isIOS) {
+          setTimeout(() => {
+            cleanup();
+            if (!stopped) {
+              tryNext();
+            }
+          }, delay);
+        }
       };
 
       tryNext();

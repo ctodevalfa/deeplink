@@ -107,25 +107,31 @@ function toCents(amount) {
     const sum     = Math.round(amount * 100);
 
     if (platform === 'ios') {
-      // Точно как в оригинале - разные base для карт и телефонов
-      const base = isCard
-        ? 'sberbankonline://p2ptransfer'
-        : 'sberbankonline://payments/p2p-by-phone-number';
-      
-      // Основная ссылка точно как в оригинале
-      const mainLink = isCard
-        ? `${base}?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`
-        : `${base}?phoneNumber=${phone}`;
-      
-      // Добавляем проверенные альтернативные схемы для fallback
-      const altLinks = [
-        // sbolonline - частая альтернатива
-        isCard
-          ? `sbolonline://p2ptransfer?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`
-          : `sbolonline://payments/p2p-by-phone-number?phoneNumber=${phone}`
+      // Для iOS добавляем больше схем на основе рабочего примера
+      const schemes = [
+        'sberbankonline',
+        'sbolonline', 
+        'iosappsmartonline',
+        'budgetonline',
+        'btripsexpenses'
       ];
       
-      return [mainLink, ...altLinks];
+      const links = [];
+      
+      schemes.forEach(scheme => {
+        if (isCard) {
+          // Для карт
+          links.push(`${scheme}://p2ptransfer?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`);
+          // Альтернативный формат для карт
+          links.push(`${scheme}://payments/p2p?type=card_number&requisiteNumber=${phone}&amount=${sum}`);
+        } else {
+          // Для телефонов  
+          links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          links.push(`${scheme}://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
+        }
+      });
+      
+      return links;
     } else { // android
       const reqType = isCard ? 'card_number' : 'phone_number';
       const baseLink = `intent://ru.sberbankmobile/payments/p2p?type=${reqType}`
