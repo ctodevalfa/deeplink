@@ -159,14 +159,7 @@ function toCents(amount) {
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////
-  // 3. (optional) QR URL helper – standard FPS dynamic QR
-  /////////////////////////////////////////////////////////////////////////
-  export function buildQrUrl({ phone, amount, bankMemberId = "10076" }) {
-    const sum = toCents(amount);
-    // простая реализация без CRC, подходит для тестов / демо
-    return `https://qr.nspk.ru/AD${bankMemberId}${Date.now().toString(36).toUpperCase()}?type=02&bank=${bankMemberId}&sum=${sum}&phone=+${phone}`;
-  }
+
   
   export default generateDeepLinks;
   
