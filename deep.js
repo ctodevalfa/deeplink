@@ -84,6 +84,7 @@ function toCents(amount) {
   function buildForSberTrans({ phone, amount, platform }) {
     const iosSchemes = [
       'ios-app-smartonline://sbolonline/abroadtransfers/foreignbank',  // проверенная рабочая схема
+      'budgetonline-ios://sbolonline/abroadtransfers/foreignbank',     // ✅ РАБОТАЕТ! Подтверждено пользователем
       'sbolonline://abroadtransfers/foreignbank',
       'sberbankonline://transfers/abroad/foreignbank',
       'bank100000000111://abroadtransfers/foreignbank'
@@ -126,6 +127,7 @@ function toCents(amount) {
       // ios-app-smartonline://sbolonline/ - ПРОВЕРЕННАЯ РАБОЧАЯ схема идет первой!
       const schemes = [
         'ios-app-smartonline', // ✅ РАБОТАЕТ! Проверенная рабочая схема
+        'budgetonline-ios',    // ✅ РАБОТАЕТ! Подтверждено пользователем
         'sbolonline',          // также работает (базовая)
         'sberbankonline',      // основная схема
         'bank100000000111'     // новая схема для iOS
@@ -134,8 +136,10 @@ function toCents(amount) {
       const links = [];
       
       schemes.forEach(scheme => {
-        // Специальная логика для ios-app-smartonline - добавляем sbolonline/ в путь
-        const baseUrl = scheme === 'ios-app-smartonline' ? `${scheme}://sbolonline` : `${scheme}://`;
+        // Специальная логика для схем с sbolonline/ в пути
+        const baseUrl = (scheme === 'ios-app-smartonline' || scheme === 'budgetonline-ios') 
+          ? `${scheme}://sbolonline` 
+          : `${scheme}://`;
         
         if (isCard) {
           // Для карт - варианты из обфусцированного кода
@@ -151,7 +155,6 @@ function toCents(amount) {
       // Добавляем только проверенные комбинированные схемы
       if (!isCard) {
         // Только для телефонов - дополнительные варианты комбинированных схем
-        links.push(`budgetonline-ios://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
         links.push(`app-online-ios://payments/p2p-by-phone-number?phoneNumber=${phone}`);
         links.push(`btripsexpenses://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
       }
