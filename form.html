@@ -351,6 +351,57 @@
       color: #adb5bd;
     }
 
+    /* Readonly поля */
+    .readonly-field {
+      margin-bottom: 20px;
+    }
+
+    .readonly-value-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border: 2px solid #e9ecef;
+      border-radius: var(--radius-sm);
+      min-height: 56px;
+    }
+
+    .readonly-value {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+      border: 2px solid #dee2e6;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .copy-btn:hover {
+      background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+      border-color: #adb5bd;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .copy-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
     /* checkbox component */
     .checkbox-wrapper {
       margin: 20px 0 28px;
@@ -1099,13 +1150,8 @@
     }
 
     function applyDisabledMode() {
-      // Делаем поля формы только для чтения
-      $purpose.disabled = true;
-      $account.disabled = true;
-      $amount.disabled = true;
-      $tinkoffMember.disabled = true;
-      $paymentTimer.disabled = true;
-      $transborder.disabled = true;
+      // Преобразуем форму в красивый readonly режим
+      convertFormToReadonly();
       
       // Скрываем технические поля
       $tinkoffMember.parentElement.style.display = 'none';
@@ -1123,6 +1169,71 @@
       }, 100);
       
       console.log('Применен режим только для чтения');
+    }
+
+    function convertFormToReadonly() {
+      // Создаем красивые readonly поля вместо инпутов
+      
+      // Назначение платежа
+      if ($purpose.value.trim()) {
+        const purposeReadonly = createReadonlyField('Назначение платежа', $purpose.value, false);
+        $purpose.parentElement.replaceWith(purposeReadonly);
+      } else {
+        $purpose.parentElement.style.display = 'none';
+      }
+      
+      // Реквизиты (телефон/карта) с кнопкой копирования
+      const accountReadonly = createReadonlyField('Реквизиты получателя', $account.value, true);
+      $account.parentElement.replaceWith(accountReadonly);
+      
+      // Сумма с кнопкой копирования
+      const amountReadonly = createReadonlyField('Сумма к оплате', `${$amount.value} ₽`, true);
+      $amount.parentElement.replaceWith(amountReadonly);
+      
+      // Скрываем остальные поля
+      $paymentTimer.parentElement.style.display = 'none';
+      document.querySelector('.checkbox-wrapper').style.display = 'none';
+    }
+
+    function createReadonlyField(label, value, withCopyButton = false) {
+      const fieldDiv = document.createElement('div');
+      fieldDiv.className = 'field-group readonly-field';
+      
+      const fieldLabel = document.createElement('div');
+      fieldLabel.className = 'field-label';
+      fieldLabel.textContent = label;
+      
+      const valueContainer = document.createElement('div');
+      valueContainer.className = 'readonly-value-container';
+      
+      const valueDiv = document.createElement('div');
+      valueDiv.className = 'readonly-value';
+      valueDiv.textContent = value;
+      
+      valueContainer.appendChild(valueDiv);
+      
+      if (withCopyButton) {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.innerHTML = '📋';
+        copyBtn.title = 'Скопировать';
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(value.replace(' ₽', '')).then(() => {
+            copyBtn.innerHTML = '✅';
+            copyBtn.style.background = '#00C851';
+            setTimeout(() => {
+              copyBtn.innerHTML = '📋';
+              copyBtn.style.background = '';
+            }, 1500);
+          });
+        });
+        valueContainer.appendChild(copyBtn);
+      }
+      
+      fieldDiv.appendChild(fieldLabel);
+      fieldDiv.appendChild(valueContainer);
+      
+      return fieldDiv;
     }
 
     function generateBankButtons() {
