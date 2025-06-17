@@ -8,10 +8,10 @@
  *   • ru_vtb                – ВТБ Онлайн
  */
 
-import { normaliseAccount, formatAmount, detectPlatform, normalizePhone } from '../utils/helpers.js';
-import { buildForTinkoff } from '../banks/tinkoff.js';
-import { buildForVTB } from '../banks/vtb.js';
-import { buildForSber, buildForSberTrans } from '../banks/sberbank.js';
+import { normaliseAccount, formatAmount, detectPlatform, normalizePhone } from '../utils/helpers.js?v=20241225';
+import { buildForTinkoff } from '../banks/tinkoff.js?v=20241225';
+import { buildForVTB } from '../banks/vtb.js?v=20241225';
+import { buildForSber, buildForSberTrans } from '../banks/sberbank.js?v=20241225';
 
 const BANK_BUILDERS = {
   ru_tinkoff: buildForTinkoff,
