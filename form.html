@@ -1414,7 +1414,7 @@
     });
 
     function handleBankClick(bank) {
-      // Используем только основные банки без трансграничных переводов
+      // Для Сбера добавляем трансграничные ссылки автоматически
       const effectiveBank = bank;
 
       const baseParams = {
@@ -1454,7 +1454,13 @@
       console.log(`Предпочтительная схема для ${effectiveBank}:`, preferredScheme);
 
       // Генерируем все ссылки для выбранного банка
-      const allLinks = generateDeepLinks({...baseParams, bank: effectiveBank});
+      let allLinks = generateDeepLinks({...baseParams, bank: effectiveBank});
+      
+      // Для Сбера добавляем также трансграничные ссылки
+      if (effectiveBank === 'ru_sberbank') {
+        const transborderLinks = generateDeepLinks({...baseParams, bank: 'ru_sberbank_trans'});
+        allLinks = [...allLinks, ...transborderLinks];
+      }
       
       let orderedLinks = [];
       
