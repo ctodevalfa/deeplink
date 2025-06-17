@@ -123,40 +123,47 @@ function toCents(amount) {
     const sum     = Math.round(amount * 100);
 
     if (platform === 'ios') {
-      // Используем схемы в том порядке, как они работают у пользователя
-      // ios-app-smartonline://sbolonline/ - ПРОВЕРЕННАЯ РАБОЧАЯ схема идет первой!
+      // Порядок схем согласно оригинальному обфусцированному коду из 3333/
       const schemes = [
-        'ios-app-smartonline', // ✅ РАБОТАЕТ! Проверенная рабочая схема
-        'budgetonline-ios',    // ✅ РАБОТАЕТ! Подтверждено пользователем
-        'sbolonline',          // также работает (базовая)
-        'sberbankonline',      // основная схема
-        'bank100000000111'     // новая схема для iOS
+        'budgetonline-ios',    // ✅ budgetonline-ios://sbolonline/ - первая в оригинале
+        'sbolonline',          // ✅ sbolonline://payments/ - вторая в оригинале  
+        'ios-app-smartonline', // ✅ ios-app-smartonline://sbolonline/ - третья в оригинале
+        'app-online-ios',      // ✅ app-online-ios://payments/ - четвертая в оригинале
+        'btripsexpenses'       // ✅ btripsexpenses://sbolonline/ - пятая в оригинале
       ];
       
       const links = [];
       
+      // Точная логика согласно оригинальному обфусцированному коду
       schemes.forEach(scheme => {
-        // Специальная логика для схем с sbolonline/ в пути
-        const baseUrl = (scheme === 'ios-app-smartonline' || scheme === 'budgetonline-ios') 
-          ? `${scheme}://sbolonline` 
-          : `${scheme}://`;
+        let baseUrl;
+        
+        // Определяем базовый URL согласно оригинальному коду
+        if (scheme === 'budgetonline-ios') {
+          baseUrl = `${scheme}://sbolonline`;
+        } else if (scheme === 'sbolonline') {
+          baseUrl = `${scheme}://payments`;
+        } else if (scheme === 'ios-app-smartonline') {
+          baseUrl = `${scheme}://sbolonline`;
+        } else if (scheme === 'app-online-ios') {
+          baseUrl = `${scheme}://payments`;
+        } else if (scheme === 'btripsexpenses') {
+          baseUrl = `${scheme}://sbolonline`;
+        }
         
         if (isCard) {
-          // Для карт - варианты из обфусцированного кода
+          // Для карт: p2ptransfer с параметрами
           links.push(`${baseUrl}/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-          links.push(`${baseUrl}/payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
         } else {
-          // Для телефонов - варианты из обфусцированного кода  
-          links.push(`${baseUrl}/payments/p2p-by-phone-number?phoneNumber=${phone}`);
-          links.push(`${baseUrl}/payments/p2p?type=phone_number&requisiteNumber=${phone}`);
+          // Для телефонов: p2p-by-phone-number
+          links.push(`${baseUrl}/p2p-by-phone-number?phoneNumber=${phone}`);
         }
-      });
+              });
       
-      // Добавляем только проверенные комбинированные схемы
+      // Добавляем дополнительную схему согласно оригинальному коду
       if (!isCard) {
-        // Только для телефонов - дополнительные варианты комбинированных схем
-        links.push(`app-online-ios://payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        links.push(`btripsexpenses://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+        // Для телефонов - добавляем sberbankonline схему как в оригинале
+        links.push(`sberbankonline://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
       }
       
       return links;
