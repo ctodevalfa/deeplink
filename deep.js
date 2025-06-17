@@ -108,27 +108,31 @@ function toCents(amount) {
 
     if (platform === 'ios') {
       // Используем схемы в том порядке, как они работают у пользователя
-      // sbolonline:// - проверенная рабочая схема идет первой
+      // ios-app-smartonline://sbolonline/ - ПРОВЕРЕННАЯ РАБОЧАЯ схема идет первой!
       const schemes = [
-        'sbolonline',        // ✅ РАБОТАЕТ! Проверенная схема
-        'sberbankonline',    // основная схема  
-        'bank100000000111',  // новая схема для iOS
-        'iosappsmartonline', // iOS Smart Online
-        'budgetonline',      // Budget Online  
-        'btripsexpenses'     // Business Trips
+        'ios-app-smartonline', // ✅ РАБОТАЕТ! Проверенная рабочая схема
+        'sbolonline',          // также работает
+        'sberbankonline',      // основная схема  
+        'bank100000000111',    // новая схема для iOS
+        'iosappsmartonline',   // iOS Smart Online (старое имя)
+        'budgetonline',        // Budget Online  
+        'btripsexpenses'       // Business Trips
       ];
       
       const links = [];
       
       schemes.forEach(scheme => {
+        // Специальная логика для ios-app-smartonline - добавляем sbolonline/ в путь
+        const baseUrl = scheme === 'ios-app-smartonline' ? `${scheme}://sbolonline` : `${scheme}://`;
+        
         if (isCard) {
           // Для карт - варианты из обфусцированного кода
-          links.push(`${scheme}://p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-          links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          links.push(`${baseUrl}/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          links.push(`${baseUrl}/payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
         } else {
           // Для телефонов - варианты из обфусцированного кода  
-          links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
-          links.push(`${scheme}://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
+          links.push(`${baseUrl}/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          links.push(`${baseUrl}/payments/p2p?type=phone_number&requisiteNumber=${phone}`);
         }
       });
       
