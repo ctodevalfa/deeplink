@@ -1093,6 +1093,9 @@
       $tinkoffMember.disabled = true;
       $paymentTimer.disabled = true;
       
+      // Скрываем технические поля
+      $tinkoffMember.parentElement.style.display = 'none';
+      
       // Скрываем кнопку генерации и копирования
       document.getElementById('generate-btn').style.display = 'none';
       $copyLinkBtn.style.display = 'none';
