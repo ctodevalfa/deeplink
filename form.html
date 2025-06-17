@@ -1847,16 +1847,51 @@
     // Попытаться открыть каждую ссылку по очереди, пока не сработает
     function attemptLinks(links, currentBank) {
       let idx = 0;
+      let isFinished = false; // Флаг для остановки перебора
       const device = getDeviceInfo();
 
       const tryNext = () => {
-        if (idx >= links.length) {
-          console.log('Все ссылки перепробованы');
+        if (isFinished || idx >= links.length) {
+          if (!isFinished) {
+            console.log('Все ссылки перепробованы');
+          }
           return;
         }
         
         const url = links[idx++];
         console.log(`Попытка ${idx}/${links.length}: ${url}`);
+
+        let timeoutId;
+        let appOpened = false;
+
+        // Обработчик успешного открытия приложения
+        const onBlur = () => {
+          if (!appOpened) {
+            appOpened = true;
+            isFinished = true; // Останавливаем перебор
+            clearTimeout(timeoutId);
+            
+            console.log(`✅ УСПЕХ! Приложение ${currentBank} открыто по ссылке: ${url}`);
+            
+            // Сохраняем успешную схему
+            const scheme = extractSchemePattern(url);
+            savePreferredScheme(currentBank, url);
+            
+            // Убираем обработчики
+            window.removeEventListener('blur', onBlur);
+            window.removeEventListener('focus', onFocus);
+          }
+        };
+
+        const onFocus = () => {
+          if (appOpened) {
+            console.log(`↩️ Пользователь вернулся из приложения ${currentBank}`);
+          }
+        };
+
+        // Устанавливаем обработчики
+        window.addEventListener('blur', onBlur);
+        window.addEventListener('focus', onFocus);
 
         // Максимально простая логика как в рабочем примере
         if (device.isIOS) {
@@ -1864,9 +1899,13 @@
           window.location.href = url;
           
           // Если через 1.5 секунды мы все еще здесь - пробуем следующую
-          setTimeout(() => {
-            console.log(`iOS: Схема не сработала, пробуем следующую...`);
-            tryNext();
+          timeoutId = setTimeout(() => {
+            if (!isFinished && !appOpened) {
+              console.log(`iOS: Схема не сработала, пробуем следующую...`);
+              window.removeEventListener('blur', onBlur);
+              window.removeEventListener('focus', onFocus);
+              tryNext();
+            }
           }, 1500);
           
         } else {
@@ -1876,9 +1915,13 @@
           iframe.src = url;
           document.body.appendChild(iframe);
           
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             iframe.remove();
-            tryNext();
+            if (!isFinished && !appOpened) {
+              window.removeEventListener('blur', onBlur);
+              window.removeEventListener('focus', onFocus);
+              tryNext();
+            }
           }, 2000);
         }
       };
