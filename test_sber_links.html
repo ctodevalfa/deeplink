@@ -6,11 +6,17 @@
         body { font-family: Arial, sans-serif; padding: 20px; }
         .link { margin: 10px 0; padding: 10px; background: #f0f0f0; border-left: 3px solid #007AFF; }
         .scheme { font-weight: bold; color: #007AFF; }
+        .params { font-size: 12px; color: #666; margin-top: 5px; }
         button { margin: 5px; padding: 10px 15px; background: #007AFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 10px 0; }
     </style>
 </head>
 <body>
-    <h1>Тест ссылок Сбербанка</h1>
+    <h1>Тест ссылок Сбербанка (обновлено)</h1>
+    
+    <div class="info">
+        <strong>Изменения:</strong> Добавлены параметры <code>amount</code>, <code>isNeedToOpenNextScreen=true</code>, <code>skipContactsScreen=true</code> для всех ссылок на телефоны. Добавлена 6-я схема <code>sberbankonline</code>.
+    </div>
     
     <div>
         <label>Телефон: <input type="text" id="phone" value="79381876034"></label>
@@ -32,17 +38,22 @@
             const links = buildForSber({ phone, amount, platform });
             
             const output = document.getElementById('output');
-            output.innerHTML = '<h3>Сгенерированные ссылки для iOS:</h3>';
+            output.innerHTML = `<h3>Сгенерированные ссылки для iOS (${links.length} шт.):</h3>`;
             
             links.forEach((link, index) => {
                 const schemeMatch = link.match(/^([^:]+):/);
                 const scheme = schemeMatch ? schemeMatch[1] : 'unknown';
                 
+                // Извлекаем параметры для отображения
+                const paramsMatch = link.match(/\?(.+)$/);
+                const params = paramsMatch ? paramsMatch[1] : 'без параметров';
+                
                 output.innerHTML += `
                     <div class="link">
                         <div class="scheme">${index + 1}. ${scheme}</div>
                         <div>${link}</div>
-                        <button onclick="window.open('${link}', '_self')">Попробовать</button>
+                        <div class="params">Параметры: ${params}</div>
+                        <button onclick="window.location.href='${link}'">Попробовать</button>
                     </div>
                 `;
             });
@@ -58,10 +69,15 @@
             let index = 0;
             function tryNext() {
                 if (index < links.length) {
-                    console.log(`Попытка ${index + 1}: ${links[index]}`);
+                    console.log(`Попытка ${index + 1}/${links.length}: ${links[index]}`);
                     window.location.href = links[index];
                     index++;
-                    setTimeout(tryNext, 2000); // Пауза между попытками
+                    setTimeout(() => {
+                        // Возвращаемся на страницу и пробуем следующую
+                        if (index < links.length) {
+                            tryNext();
+                        }
+                    }, 3000); // Увеличена пауза
                 }
             }
             

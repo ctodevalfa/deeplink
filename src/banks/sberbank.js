@@ -13,27 +13,30 @@ export function buildForSber({ phone, amount, platform }) {
       // 1. budgetonline-ios
       `budgetonline-ios://sbolonline/${isCard ? 
         `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
-        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}&amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true`}`,
       
       // 2. sbolonline  
       `sbolonline://payments/${isCard ? 
         `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber}` : 
-        `p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+        `p2p-by-phone-number?phoneNumber=${normalizedPhone}&amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true`}`,
       
       // 3. ios-app-smartonline
       `ios-app-smartonline://sbolonline/${isCard ? 
         `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
-        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}&amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true`}`,
       
       // 4. app-online-ios
       `app-online-ios://payments/${isCard ? 
         `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber}` : 
-        `p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+        `p2p-by-phone-number?phoneNumber=${normalizedPhone}&amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true`}`,
       
       // 5. btripsexpenses
       `btripsexpenses://sbolonline/${isCard ? 
         `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
-        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`
+        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}&amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true`}`,
+      
+      // 6. sberbankonline (дополнительная схема)
+      `sberbankonline://payments/p2p?type=phone_number&requisiteNumber=${normalizedPhone}&amount=${sum}`
     ];
   } else {
     // Android
