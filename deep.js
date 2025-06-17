@@ -89,10 +89,15 @@ function toCents(amount) {
     ];
 
     const androidSchemes = [
-      'sberbankonline://transfers/abroad/foreignbank',
+      'budgetonline-ios://sbolonline/abroadtransfers/foreignbank',
+      'sbolonline://abroadtransfers/foreignbank',
+      'ios-app-smartonline://sbolonline/abroadtransfers/foreignbank',
+      'app-online-ios://abroadtransfers/foreignbank',
+      'btripsexpenses://sbolonline/abroadtransfers/foreignbank',
       'intent://ru.sberbankmobile/transfers/abroad/foreignbank',
       'android-app://ru.sberbankmobile/transfers/abroad/foreignbank',
-      'intent://ru.sberbankmobile/android-app/transfers/abroad/foreignbank'
+      'intent://ru.sberbankmobile/android-app/transfers/abroad/foreignbank',
+      'sberbankonline://transfers/abroad/foreignbank'
     ];
 
     // Пробуем добавить параметры для трансграничных переводов
@@ -149,18 +154,72 @@ function toCents(amount) {
       return links;
     } else { // android
       const reqType = isCard ? 'card_number' : 'phone_number';
-      const baseLink = `intent://ru.sberbankmobile/payments/p2p?type=${reqType}`
-           + `&requisiteNumber=${phone}`
-           + (isCard ? `&amount=${sum}` : '')
-           + '#Intent;scheme=https;end';
+      const links = [];
       
-      // Альтернативные схемы для Android
-      const altLinks = [
-        `sberbankonline://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
-        `android-app://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`
+      // Добавляем схемы из оригинального обфусцированного кода для Android
+      // Включаем iOS-схемы которые работают и на Android
+      const crossPlatformSchemes = [
+        'budgetonline-ios',    // из оригинального кода
+        'sbolonline',          // базовая схема  
+        'ios-app-smartonline', // работающая схема
+        'app-online-ios',      // из оригинального кода
+        'btripsexpenses'       // из оригинального кода
       ];
       
-      return [baseLink, ...altLinks];
+      // Добавляем кроссплатформенные схемы (работают и на Android)
+      crossPlatformSchemes.forEach(scheme => {
+        if (isCard) {
+          // Для карт
+          if (scheme === 'ios-app-smartonline') {
+            links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          } else if (scheme === 'budgetonline-ios' || scheme === 'btripsexpenses') {
+            links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          } else if (scheme === 'app-online-ios') {
+            links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          } else {
+            links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          }
+        } else {
+          // Для телефонов
+          if (scheme === 'ios-app-smartonline') {
+            links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          } else if (scheme === 'budgetonline-ios' || scheme === 'btripsexpenses') {
+            links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          } else if (scheme === 'app-online-ios') {
+            links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          } else {
+            links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          }
+        }
+      });
+      
+      // Добавляем чисто Android схемы из оригинального кода
+      const pureAndroidSchemes = [
+        'sberbankonline',      // основная схема
+        'bank100000000111'     // новая схема
+      ];
+      
+      pureAndroidSchemes.forEach(scheme => {
+        if (isCard) {
+          links.push(`${scheme}://p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+        } else {
+          links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          links.push(`${scheme}://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
+        }
+      });
+      
+      // Добавляем intent-схемы из оригинального кода
+      const intentLinks = [
+        `intent://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
+        `android-app://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
+        `intent://ru.sberbankmobile/android-app/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
+        `sberbankonline://payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`
+      ];
+      
+      links.push(...intentLinks);
+      
+      return links;
     }
   }
   
