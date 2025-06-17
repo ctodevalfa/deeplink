@@ -53,7 +53,7 @@ function toCents(amount) {
   function buildForTinkoff({ phone, amount, bankMemberId = '10076' }) {
     const schemes = [
       'freelancecase', 'yourmoney', 'tinkoffbank', 'tbank', 'feedaways', 'toffice', 'tguard',
-      'mobtrs', 'goaloriented', 'tmydocs', 'tfinstudy', 'tsplit', 'tfinskills'
+      'mobtrs', 'goaloriented', 'tmydocs', 'tfinstudy', 'tsplit', 'tfinskills', 'bank100000000004'
     ];
     return schemes.map(s => {
       const prefix = `${s}://Main/`;
@@ -91,6 +91,7 @@ function toCents(amount) {
     const iosSchemes = [
       'sbolonline://',                    // основная
       'sberbankonline://',               // alias, встречается в старых версиях
+      'bank100000000111://',             // новая схема для iOS
       'budgetonline-ios://sbolonline/',
       'ios-app-smartonline://sbolonline/',
       'app-online-ios://',
@@ -99,17 +100,24 @@ function toCents(amount) {
   
     const androidSchemes = [
       'sberbankonline://payments/p2p?type=phone_number&requisiteNumber=', // native custom scheme
+      'android-app://ru.sberbankmobile/payments/p2p?type=card_number&requisiteNumber=', // новая схема для Android
       'intent://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
       'android-app://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
       'intent://ru.sberbankmobile/android-app/payments/p2p?type=phone_number&requisiteNumber='
     ];
   
     if (platform === 'ios') {
-      return iosSchemes.map(base =>
-        phone.length >= 16
+      return iosSchemes.map(base => {
+        if (base === 'bank100000000111://') {
+          // Для новой iOS схемы используем формат payments...
+          return phone.length >= 16
+            ? `${base}payments/p2p?${amountQuery}`
+            : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
+        }
+        return phone.length >= 16
           ? `${base}p2ptransfer?${amountQuery}`
-          : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`
-      );
+          : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
+      });
     }
     // android – добавляем сумму
     return androidSchemes.map(base => `${base}${phone}&amount=${amount}`);
