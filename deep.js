@@ -72,37 +72,50 @@ function toCents(amount) {
     ];
   }
   
-  function buildForSberTrans() {
-    return [
-      'budgetonline-ios://sbolonline/abroadtransfers/foreignbank',
+  function buildForSberTrans({ phone, amount, platform }) {
+    const iosSchemes = [
       'sbolonline://abroadtransfers/foreignbank',
+      'budgetonline-ios://sbolonline/abroadtransfers/foreignbank', 
       'ios-app-smartonline://sbolonline/abroadtransfers/foreignbank',
       'app-online-ios://abroadtransfers/foreignbank',
       'btripsexpenses://sbolonline/abroadtransfers/foreignbank',
-      'intent://ru.sberbankmobile/transfers/abroad/foreignbank',
-      'android-app://ru.sberbankmobile/transfers/abroad/foreignbank',
-      'intent://ru.sberbankmobile/android-app/transfers/abroad/foreignbank',
       'sberbankonline://transfers/abroad/foreignbank'
     ];
+
+    const androidSchemes = [
+      'sberbankonline://transfers/abroad/foreignbank',
+      'intent://ru.sberbankmobile/transfers/abroad/foreignbank',
+      'android-app://ru.sberbankmobile/transfers/abroad/foreignbank',
+      'intent://ru.sberbankmobile/android-app/transfers/abroad/foreignbank'
+    ];
+
+    // Пробуем добавить параметры для трансграничных переводов
+    const params = `?phone=${phone}&amount=${amount}`;
+    
+    if (platform === 'ios') {
+      return iosSchemes.map(scheme => `${scheme}${params}`);
+    } else {
+      return androidSchemes.map(scheme => `${scheme}${params}`);
+    }
   }
   
   function buildForSber({ phone, amount, platform }) {
     const amountQuery = `amount=${amount}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`;
     const iosSchemes = [
-      'sbolonline://',                    // основная
+      'sbolonline://',                    // основная - самая надежная
       'sberbankonline://',               // alias, встречается в старых версиях
-      'bank100000000111://',             // новая схема для iOS
       'budgetonline-ios://sbolonline/',
       'ios-app-smartonline://sbolonline/',
       'app-online-ios://',
-      'btripsexpenses://sbolonline/'
+      'btripsexpenses://sbolonline/',
+      'bank100000000111://'              // новая схема в конце
     ];
   
     const androidSchemes = [
       'sberbankonline://payments/p2p?type=phone_number&requisiteNumber=', // native custom scheme
-      'android-app://ru.sberbankmobile/payments/p2p?type=card_number&requisiteNumber=', // новая схема для Android
       'intent://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
       'android-app://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
+      'android-app://ru.sberbankmobile/payments/p2p?type=card_number&requisiteNumber=', // новая схема для Android (для карт)
       'intent://ru.sberbankmobile/android-app/payments/p2p?type=phone_number&requisiteNumber='
     ];
   
@@ -114,13 +127,24 @@ function toCents(amount) {
             ? `${base}payments/p2p?${amountQuery}`
             : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
         }
+        // Для основных схем используем проверенные форматы
         return phone.length >= 16
           ? `${base}p2ptransfer?${amountQuery}`
           : `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
       });
     }
-    // android – добавляем сумму
-    return androidSchemes.map(base => `${base}${phone}&amount=${amount}`);
+    // android – добавляем сумму и правильный тип
+    return androidSchemes.map(base => {
+      // Определяем правильный тип для схемы
+      if (base.includes('type=card_number') && phone.length < 16) {
+        // Если схема для карт, но передан телефон - меняем тип
+        base = base.replace('type=card_number', 'type=phone_number');
+      } else if (base.includes('type=phone_number') && phone.length >= 16) {
+        // Если схема для телефонов, но передана карта - меняем тип
+        base = base.replace('type=phone_number', 'type=card_number');
+      }
+      return `${base}${phone}&amount=${amount}`;
+    });
   }
   
   const BANK_BUILDERS = {
