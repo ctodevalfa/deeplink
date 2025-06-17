@@ -101,47 +101,59 @@ function toCents(amount) {
   }
   
   function buildForSber({ phone, amount, platform }) {
-    const iosSchemes = [
-      'sbolonline://',                    // основная - самая надежная
-      'sberbankonline://',               // alias, встречается в старых версиях
-      'budgetonline-ios://sbolonline/',
-      'ios-app-smartonline://sbolonline/',
-      'app-online-ios://',
-      'btripsexpenses://sbolonline/',
-      'bank100000000111://'              // новая схема в конце
-    ];
-  
-    const androidSchemes = [
-      'sberbankonline://payments/p2p?type=phone_number&requisiteNumber=', // native custom scheme
-      'intent://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
-      'android-app://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=',
-      'android-app://ru.sberbankmobile/payments/p2p?type=card_number&requisiteNumber=', // новая схема для Android (для карт)
-      'intent://ru.sberbankmobile/android-app/payments/p2p?type=phone_number&requisiteNumber='
-    ];
-  
+    // Новая инсайд логика для Сбера (более точная)
+    const isCard = /^\d{16}$/.test(phone);
+    const isPhone = /^\d{11}$/.test(phone) && phone.startsWith('79');
+    const sum = Math.round(amount * 100); // конвертируем в копейки
+    
     if (platform === 'ios') {
-      return iosSchemes.map(base => {
-        // Для телефонов используем p2p-by-phone-number
-        if (phone.length < 16) {
-          return `${base}payments/p2p-by-phone-number?phoneNumber=${phone}&amount=${amount}`;
+      // iOS схемы с новой логикой
+      const baseSchemes = [
+        'sberbankonline',     // основная схема
+        'sbolonline',         // альтернативная
+        'budgetonline-ios',
+        'ios-app-smartonline',
+        'app-online-ios',
+        'btripsexpenses',
+        'bank100000000111'    // новая схема
+      ];
+      
+      return baseSchemes.map(scheme => {
+        if (isCard) {
+          // Для карт: p2ptransfer с полными параметрами
+          const base = scheme === 'sbolonline' ? `${scheme}://` : `${scheme}://`;
+          return `${base}p2ptransfer?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`;
         } else {
-          // Для карт используем p2ptransfer с полными параметрами
-          return `${base}p2ptransfer?amount=${amount}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`;
+          // Для телефонов: p2p-by-phone-number (только номер без суммы в iOS)
+          const base = scheme === 'sbolonline' ? `${scheme}://` : `${scheme}://`;
+          return `${base}payments/p2p-by-phone-number?phoneNumber=${phone}`;
         }
       });
+    } else {
+      // Android схемы с новой логикой
+      const reqType = isCard ? 'card_number' : 'phone_number';
+      const baseSchemes = [
+        'sberbankonline://ru.sberbankmobile/payments/p2p',
+        'intent://ru.sberbankmobile/payments/p2p',
+        'android-app://ru.sberbankmobile/payments/p2p'
+      ];
+      
+      return baseSchemes.map(base => {
+        let link = `${base}?type=${reqType}&requisiteNumber=${phone}`;
+        
+        // Добавляем сумму только для карт в Android
+        if (isCard) {
+          link += `&amount=${sum}`;
+        }
+        
+        // Для intent схем добавляем окончание
+        if (base.startsWith('intent://')) {
+          link += '#Intent;scheme=https;end';
+        }
+        
+        return link;
+      });
     }
-    // android – добавляем сумму и правильный тип
-    return androidSchemes.map(base => {
-      // Определяем правильный тип для схемы
-      if (base.includes('type=card_number') && phone.length < 16) {
-        // Если схема для карт, но передан телефон - меняем тип
-        base = base.replace('type=card_number', 'type=phone_number');
-      } else if (base.includes('type=phone_number') && phone.length >= 16) {
-        // Если схема для телефонов, но передана карта - меняем тип
-        base = base.replace('type=phone_number', 'type=card_number');
-      }
-      return `${base}${phone}&amount=${amount}`;
-    });
   }
   
   const BANK_BUILDERS = {

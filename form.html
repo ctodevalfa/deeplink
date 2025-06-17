@@ -7,22 +7,22 @@
   <title>Express Pay - Быстрые платежи</title>
   <style>
     :root {
-      --bg: #f5f7fa;
+      --bg: #f8fafc;
       --card-bg: #ffffff;
-      --border: #e1e8ed;
-      --text: #14171a;
-      --text-muted: #5b7083;
-      --primary: #1da1f2;
-      --primary-hover: #1991db;
-      --success: #17bf63;
-      --express-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-      --express-fast: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-      --express-speed: linear-gradient(45deg, #fa709a 0%, #fee140 100%);
-      --radius: 20px;
-      --radius-sm: 12px;
-      --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-      --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.18);
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #059669;
+      --fintech-gradient: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      --fintech-accent: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+      --fintech-neutral: linear-gradient(135deg, #64748b 0%, #475569 100%);
+      --radius: 16px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.1);
+      --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.12);
     }
 
     * {
@@ -57,7 +57,11 @@
       margin: 0;
       padding: 20px;
       font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(29, 78, 216, 0.02) 0%, transparent 50%),
+        linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
       color: var(--text);
       display: flex;
       justify-content: center;
@@ -66,6 +70,26 @@
       padding-top: 40px;
       -webkit-overflow-scrolling: touch;
       overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 2px,
+          rgba(37, 99, 235, 0.01) 2px,
+          rgba(37, 99, 235, 0.01) 4px
+        );
+      pointer-events: none;
+      z-index: -1;
     }
 
     .card {
@@ -75,8 +99,12 @@
       width: 100%;
       max-width: 440px;
       padding: 40px 32px;
-      box-shadow: var(--shadow-xl);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        0 4px 16px rgba(0, 0, 0, 0.04),
+        0 0 0 1px rgba(255, 255, 255, 0.8);
       position: relative;
+      backdrop-filter: blur(10px);
     }
 
     .card::before {
@@ -85,8 +113,8 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 6px;
-      background: var(--express-gradient);
+      height: 4px;
+      background: var(--fintech-gradient);
       border-radius: var(--radius) var(--radius) 0 0;
     }
 
@@ -97,70 +125,113 @@
     }
 
     .brand-logo {
-      font-size: 28px;
-      font-weight: 700;
-      background: var(--express-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text);
       margin-bottom: 8px;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.01em;
       position: relative;
     }
 
-    .brand-tagline {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
+    .field-label-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
     }
 
-    .trust-indicators {
+    .inline-timer {
+      background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+      border: 1px solid #d1e7ff;
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: none;
+      text-align: center;
+    }
+
+    .inline-timer-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      font-family: 'Inter', monospace;
+      letter-spacing: 0.5px;
+      margin-right: 4px;
+    }
+
+    .inline-timer-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .inline-timer.timer-expired {
+      background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+      border-color: #ff9999;
+      animation: timer-expired 0.5s infinite alternate;
+    }
+
+    .inline-timer.timer-expired .inline-timer-text {
+      color: #dc3545;
+    }
+
+    .inline-timer.timer-expired .inline-timer-label {
+      color: #dc3545;
+    }
+
+    .footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .security-info {
       display: flex;
       justify-content: center;
-      gap: 16px;
-      margin: 16px 0 24px;
+      gap: 24px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
 
-    .trust-badge {
+    .security-item {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
-      color: var(--success);
-      font-weight: 600;
-      background: rgba(23, 191, 99, 0.1);
-      padding: 6px 12px;
-      border-radius: 20px;
-      border: 1px solid rgba(23, 191, 99, 0.2);
-    }
-
-
-
-    .social-proof {
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin: 16px 0;
-      text-align: center;
       font-size: 13px;
       color: var(--text-muted);
+      font-weight: 500;
     }
 
+    .security-icon {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .footer-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+
+
+
+
     .conversion-cta {
-      background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+      background: var(--fintech-gradient);
       color: white;
       border: none;
-      padding: 18px 24px;
-      font-size: 17px;
-      font-weight: 700;
-      border-radius: 12px;
+      padding: 16px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow);
       letter-spacing: -0.01em;
       position: relative;
       overflow: hidden;
@@ -168,8 +239,9 @@
     }
 
     .conversion-cta:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 210, 255, 0.4);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-lg);
+      background: var(--primary-hover);
     }
 
     .progress-indicator {
@@ -183,7 +255,7 @@
 
     .progress-bar {
       height: 100%;
-      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      background: var(--fintech-gradient);
       border-radius: 2px;
       transition: width 0.5s ease;
       position: relative;
@@ -208,40 +280,39 @@
     @keyframes pulse-ready {
       0%, 100% { 
         transform: scale(1);
-        box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+        box-shadow: var(--shadow);
       }
       50% { 
-        transform: scale(1.05);
-        box-shadow: 0 6px 25px rgba(0, 210, 255, 0.5);
+        transform: scale(1.02);
+        box-shadow: var(--shadow-lg);
       }
     }
 
     .payment-timer {
-      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
-      border: 2px solid #ff6b9d;
-      border-radius: 12px;
+      background: #f8fafc;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
       padding: 16px 20px;
       margin: 20px 0;
       text-align: center;
       display: none;
-      animation: timer-pulse 1s infinite alternate;
     }
 
     .timer-display {
-      font-size: 32px;
-      font-weight: 700;
-      color: #d63384;
-      font-family: 'Courier New', monospace;
-      letter-spacing: 2px;
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--text);
+      font-family: 'Inter', monospace;
+      letter-spacing: 1px;
       margin-bottom: 8px;
     }
 
     .timer-label {
       font-size: 14px;
-      color: #6f42c1;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
     }
 
     .timer-expired {
@@ -268,24 +339,7 @@
       100% { opacity: 0.7; }
     }
 
-    .speed-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      margin-left: 8px;
-      font-size: 11px;
-      padding: 2px 6px;
-      background: var(--express-fast);
-      color: white;
-      border-radius: 8px;
-      font-weight: 600;
-      animation: pulse-fast 2s infinite;
-    }
 
-    @keyframes pulse-fast {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(1.05); }
-    }
 
     h1 {
       font-size: 26px;
@@ -295,6 +349,26 @@
       color: var(--text);
       letter-spacing: -0.02em;
       line-height: 1.2;
+    }
+
+    /* Компактный заголовок для readonly режима */
+    .readonly-mode h1 {
+      font-size: 22px;
+      margin: 0 0 20px;
+    }
+
+    /* Компактные кнопки банков в readonly режиме */
+    .readonly-mode .banks {
+      margin-top: 16px;
+    }
+
+    .readonly-mode .bank-btn {
+      padding: 12px 16px;
+      margin-bottom: 8px;
+    }
+
+    .readonly-mode .bank-btn-content {
+      font-size: 15px;
     }
 
     .field-group {
@@ -353,18 +427,18 @@
 
     /* Readonly поля */
     .readonly-field {
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .readonly-value-container {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      padding: 16px 20px;
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      border: 2px solid #e9ecef;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      min-height: 56px;
     }
 
     .readonly-value {
@@ -376,30 +450,26 @@
     }
 
     .copy-btn {
-      background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
-      border: 2px solid #dee2e6;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 16px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
       cursor: pointer;
       transition: all 0.2s ease;
-      min-width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     .copy-btn:hover {
-      background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-      border-color: #adb5bd;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      color: var(--primary);
+      background: rgba(37, 99, 235, 0.05);
     }
 
     .copy-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      transform: scale(0.98);
     }
 
     /* checkbox component */
@@ -483,7 +553,7 @@
     .banks {
       margin-top: 32px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: 1fr;
       gap: 20px;
     }
 
@@ -683,11 +753,7 @@
 
 
 
-      .social-proof {
-        font-size: 12px;
-        padding: 10px 12px;
-        margin: 12px 0;
-      }
+
 
       .conversion-cta {
         padding: 16px 20px;
@@ -708,6 +774,69 @@
       .timer-label {
         font-size: 12px;
       }
+
+      /* Мобильная оптимизация readonly режима */
+      .readonly-mode {
+        padding: 16px 12px !important;
+      }
+
+      .readonly-mode .brand-header {
+        margin-bottom: 16px !important;
+      }
+
+      .readonly-mode h1 {
+        font-size: 20px !important;
+        margin-bottom: 16px !important;
+      }
+
+      .readonly-mode .readonly-field {
+        margin-bottom: 12px;
+      }
+
+      .readonly-mode .readonly-value-container {
+        padding: 10px 12px;
+        gap: 8px;
+      }
+
+      .readonly-mode .readonly-value {
+        font-size: 15px;
+      }
+
+      .readonly-mode .copy-btn {
+        font-size: 13px;
+        padding: 2px 6px;
+      }
+
+      .readonly-mode .bank-btn {
+        padding: 10px 12px;
+        margin-bottom: 6px;
+      }
+
+      .readonly-mode .bank-btn-content {
+        font-size: 14px;
+      }
+
+      .field-label-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .inline-timer {
+        padding: 3px 6px;
+        align-self: flex-end;
+      }
+
+      .inline-timer-text {
+        font-size: 12px;
+        letter-spacing: 0.3px;
+        margin-right: 3px;
+      }
+
+      .inline-timer-label {
+        font-size: 9px;
+        letter-spacing: 0.1px;
+      }
     }
   </style>
 </head>
@@ -716,22 +845,6 @@
     <div class="brand-header">
       <div class="brand-logo">
         Express Pay
-        <span class="speed-indicator">
-          ⚡ FAST
-        </span>
-      </div>
-      <div class="brand-tagline">express-pay.net</div>
-      
-      <div class="trust-indicators">
-        <div class="trust-badge">
-          🔒 Безопасно
-        </div>
-        <div class="trust-badge">
-          ⚡ Мгновенно
-        </div>
-        <div class="trust-badge">
-          ✅ Надежно
-        </div>
       </div>
     </div>
 
@@ -795,9 +908,7 @@
       <div class="timer-label">Осталось времени на оплату</div>
     </div>
 
-    <div class="social-proof" id="social-proof" style="display: none;">
-      👥 Более 10,000 успешных платежей сегодня • ⭐ 4.9/5 рейтинг
-    </div>
+
 
     <button id="copy-link-btn" style="margin-top: 8px; padding: 8px 16px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; color: #6c757d; font-size: 14px; cursor: pointer; display: none;">
       🔒 Скопировать read-only ссылку
@@ -817,6 +928,26 @@
       </div>
       
 
+    </div>
+
+    <div class="footer">
+      <div class="security-info">
+        <div class="security-item">
+          <span class="security-icon">🔐</span>
+          <span>SSL шифрование</span>
+        </div>
+        <div class="security-item">
+          <span class="security-icon">🏦</span>
+          <span>Банк России</span>
+        </div>
+        <div class="security-item">
+          <span class="security-icon">⚡</span>
+          <span>СБП протокол</span>
+        </div>
+      </div>
+      <div class="footer-text">
+        Все платежи обрабатываются через официальные API банков
+      </div>
     </div>
   </div>
 
@@ -842,6 +973,14 @@
     const $formTitle = document.getElementById('form-title');
     const $timerDisplay = document.getElementById('payment-timer-display');
     const $timerText = document.getElementById('timer-display');
+    // Функции для получения динамически созданных элементов таймера
+    function getInlineTimer() {
+      return document.getElementById('inline-timer-display');
+    }
+    
+    function getInlineTimerText() {
+      return document.getElementById('inline-timer-text');
+    }
 
     // Определение типа устройства
     function getDeviceInfo() {
@@ -1163,9 +1302,21 @@
       // Скрываем блок с подсказками о URL параметрах
       document.querySelector('.hints-container').style.display = 'none';
       
+      // Скрываем элементы которые не нужны в readonly режиме
+      document.getElementById('progress-indicator').style.display = 'none';
+      document.getElementById('payment-timer-display').style.display = 'none';
+      document.querySelector('.footer').style.display = 'none';
+      
+      // Компактный стиль для readonly режима
+      document.querySelector('.card').classList.add('readonly-mode');
+      document.querySelector('.card').style.padding = '24px 20px';
+      document.querySelector('.brand-header').style.marginBottom = '20px';
+      
       // Автоматически генерируем кнопки банков
       setTimeout(() => {
         generateBankButtons();
+        // Запускаем таймер в readonly режиме
+        startPaymentTimer();
       }, 100);
       
       console.log('Применен режим только для чтения');
@@ -1174,12 +1325,14 @@
     function convertFormToReadonly() {
       // Создаем красивые readonly поля вместо инпутов
       
-      // Назначение платежа
+      // Назначение платежа (всегда показываем с таймером, даже если назначение пустое)
       if ($purpose.value.trim()) {
-        const purposeReadonly = createReadonlyField('Назначение платежа', $purpose.value, false);
+        const purposeReadonly = createReadonlyField('Назначение платежа', $purpose.value, false, true);
         $purpose.parentElement.replaceWith(purposeReadonly);
       } else {
-        $purpose.parentElement.style.display = 'none';
+        // Создаем поле с пустым значением, но с таймером
+        const purposeReadonly = createReadonlyField('Назначение платежа', 'Не указано', false, true);
+        $purpose.parentElement.replaceWith(purposeReadonly);
       }
       
       // Реквизиты (телефон/карта) с кнопкой копирования
@@ -1195,13 +1348,29 @@
       document.querySelector('.checkbox-wrapper').style.display = 'none';
     }
 
-    function createReadonlyField(label, value, withCopyButton = false) {
+    function createReadonlyField(label, value, withCopyButton = false, withTimer = false) {
       const fieldDiv = document.createElement('div');
       fieldDiv.className = 'field-group readonly-field';
+      
+      const labelContainer = document.createElement('div');
+      labelContainer.className = 'field-label-container';
       
       const fieldLabel = document.createElement('div');
       fieldLabel.className = 'field-label';
       fieldLabel.textContent = label;
+      labelContainer.appendChild(fieldLabel);
+      
+      // Добавляем таймер в строку с лейблом если нужно
+      if (withTimer) {
+        const timerDiv = document.createElement('div');
+        timerDiv.className = 'inline-timer';
+        timerDiv.id = 'inline-timer-display';
+        timerDiv.innerHTML = `
+          <span class="inline-timer-text" id="inline-timer-text">15:00</span>
+          <span class="inline-timer-label">осталось</span>
+        `;
+        labelContainer.appendChild(timerDiv);
+      }
       
       const valueContainer = document.createElement('div');
       valueContainer.className = 'readonly-value-container';
@@ -1215,22 +1384,23 @@
       if (withCopyButton) {
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
-        copyBtn.innerHTML = '📋';
-        copyBtn.title = 'Скопировать';
+        copyBtn.textContent = 'Скопировать';
+        copyBtn.title = 'Скопировать в буфер обмена';
         copyBtn.addEventListener('click', () => {
           navigator.clipboard.writeText(value.replace(' ₽', '')).then(() => {
-            copyBtn.innerHTML = '✅';
-            copyBtn.style.background = '#00C851';
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Скопировано!';
+            copyBtn.style.color = 'var(--success)';
             setTimeout(() => {
-              copyBtn.innerHTML = '📋';
-              copyBtn.style.background = '';
-            }, 1500);
+              copyBtn.textContent = originalText;
+              copyBtn.style.color = '';
+            }, 2000);
           });
         });
         valueContainer.appendChild(copyBtn);
       }
       
-      fieldDiv.appendChild(fieldLabel);
+      fieldDiv.appendChild(labelContainer);
       fieldDiv.appendChild(valueContainer);
       
       return fieldDiv;
@@ -1325,14 +1495,6 @@
     function showConversionElements() {
       // Показываем прогресс-бар
       updateProgress();
-
-      // Показываем социальное доказательство через 3 секунды
-      setTimeout(() => {
-        document.getElementById('social-proof').style.display = 'block';
-      }, 3000);
-
-      // Анимация счетчика платежей
-      animateCounter();
     }
 
     // Обновление прогресса заполнения формы
@@ -1365,22 +1527,7 @@
       }
     }
 
-    // Анимация счетчика для социального доказательства
-    function animateCounter() {
-      setTimeout(() => {
-        const socialProof = document.getElementById('social-proof');
-        let count = 10000;
-        const increment = Math.floor(Math.random() * 50) + 10;
-        
-        const updateCounter = () => {
-          count += increment;
-          socialProof.innerHTML = `👥 Более ${count.toLocaleString()} успешных платежей сегодня • ⭐ 4.9/5 рейтинг`;
-        };
 
-        // Обновляем счетчик каждые 10 секунд
-        setInterval(updateCounter, 10000);
-      }, 6000);
-    }
 
     // Переменные для таймера
     let paymentTimerInterval = null;
@@ -1389,14 +1536,20 @@
     // Запуск таймера оплаты
     function startPaymentTimer() {
       const minutes = parseInt($paymentTimer.value);
+      const inlineTimer = getInlineTimer();
+      
       if (minutes === 0) {
-        $timerDisplay.style.display = 'none';
+        if (inlineTimer) inlineTimer.style.display = 'none';
         return;
       }
 
       timeRemaining = minutes * 60; // конвертируем в секунды
-      $timerDisplay.style.display = 'block';
-      $timerDisplay.classList.remove('timer-expired');
+      
+      // Показываем инлайн таймер только если он существует (в readonly режиме)
+      if (inlineTimer) {
+        inlineTimer.style.display = 'block';
+        inlineTimer.classList.remove('timer-expired');
+      }
 
       // Очищаем предыдущий таймер если есть
       if (paymentTimerInterval) {
@@ -1413,8 +1566,15 @@
 
         if (timeRemaining <= 0) {
           clearInterval(paymentTimerInterval);
-          $timerDisplay.classList.add('timer-expired');
-          $timerText.textContent = 'ВРЕМЯ ИСТЕКЛО';
+          const currentInlineTimer = getInlineTimer();
+          const currentInlineTimerText = getInlineTimerText();
+          
+          if (currentInlineTimer) {
+            currentInlineTimer.classList.add('timer-expired');
+          }
+          if (currentInlineTimerText) {
+            currentInlineTimerText.textContent = 'ИСТЕКЛО';
+          }
           
           // Показываем уведомление
           setTimeout(() => {
@@ -1428,7 +1588,12 @@
     function updateTimerDisplay() {
       const minutes = Math.floor(timeRemaining / 60);
       const seconds = timeRemaining % 60;
-      $timerText.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      const inlineTimerText = getInlineTimerText();
+      if (inlineTimerText) {
+        inlineTimerText.textContent = timeString;
+      }
     }
 
     // Остановка таймера
@@ -1437,7 +1602,10 @@
         clearInterval(paymentTimerInterval);
         paymentTimerInterval = null;
       }
-      $timerDisplay.style.display = 'none';
+      const inlineTimer = getInlineTimer();
+      if (inlineTimer) {
+        inlineTimer.style.display = 'none';
+      }
     }
 
     // Добавляем обработчики для автоматического обновления URL (только если не disabled режим)
