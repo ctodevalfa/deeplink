@@ -1,0 +1,12 @@
+{
+  "name": "deeplinks",
+  "version": "1.0.0",
+  "description": "Deeplinks for Russian banks",
+  "type": "module",
+  "main": "deep.js",
+  "scripts": {
+    "test": "node test_quick.js"
+  },
+  "author": "",
+  "license": "ISC"
+} 
