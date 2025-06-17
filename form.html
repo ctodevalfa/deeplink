@@ -216,6 +216,58 @@
       }
     }
 
+    .payment-timer {
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+      border: 2px solid #ff6b9d;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 20px 0;
+      text-align: center;
+      display: none;
+      animation: timer-pulse 1s infinite alternate;
+    }
+
+    .timer-display {
+      font-size: 32px;
+      font-weight: 700;
+      color: #d63384;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .timer-label {
+      font-size: 14px;
+      color: #6f42c1;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .timer-expired {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      border-color: #dc3545;
+      animation: timer-expired 0.5s infinite alternate;
+    }
+
+    .timer-expired .timer-display {
+      color: white;
+    }
+
+    .timer-expired .timer-label {
+      color: #ffcccb;
+    }
+
+    @keyframes timer-pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.02); }
+    }
+
+    @keyframes timer-expired {
+      0% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+
     .speed-indicator {
       display: inline-flex;
       align-items: center;
@@ -590,6 +642,21 @@
         padding: 16px 20px;
         font-size: 16px;
       }
+
+      .payment-timer {
+        padding: 12px 16px;
+        margin: 16px 0;
+      }
+
+      .timer-display {
+        font-size: 28px;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+
+      .timer-label {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -649,9 +716,26 @@
       </select>
     </div>
 
+    <div class="field-group">
+      <label class="field-label" for="payment-timer">Время на оплату</label>
+      <select id="payment-timer">
+        <option value="0">Без таймера</option>
+        <option value="5">5 минут</option>
+        <option value="10">10 минут</option>
+        <option value="15" selected>15 минут</option>
+        <option value="30">30 минут</option>
+        <option value="60">1 час</option>
+      </select>
+    </div>
+
     
 
     <button id="generate-btn" class="conversion-cta">Сформировать ссылки на оплату</button>
+
+    <div class="payment-timer" id="payment-timer-display">
+      <div class="timer-display" id="timer-display">15:00</div>
+      <div class="timer-label">Осталось времени на оплату</div>
+    </div>
 
     <div class="social-proof" id="social-proof" style="display: none;">
       👥 Более 10,000 успешных платежей сегодня • ⭐ 4.9/5 рейтинг
@@ -671,7 +755,7 @@
       <div class="hint" id="device-hint">🔐 Все платежи проходят через защищенные каналы банков</div>
       
       <div class="hint hint-small">
-        💡 URL параметры: <code>purpose</code>, <code>phone</code>, <code>amount</code>, <code>bankMemberId</code>, <code>transborder</code>, <code>disable</code>
+        💡 URL параметры: <code>purpose</code>, <code>phone</code>, <code>amount</code>, <code>bankMemberId</code>, <code>timer</code>, <code>disable</code>
       </div>
       
 
@@ -691,12 +775,14 @@
     const $account = document.getElementById('account');
     const $amount = document.getElementById('amount');
     const $tinkoffMember = document.getElementById('tinkoff-member');
-    const $transborder = document.getElementById('transborder');
+    const $paymentTimer = document.getElementById('payment-timer');
     const $banksWrap = document.getElementById('banks');
     const $clearBtn = document.getElementById('clear-preferences');
     const $hint = document.getElementById('device-hint');
     const $copyLinkBtn = document.getElementById('copy-link-btn');
     const $formTitle = document.getElementById('form-title');
+    const $timerDisplay = document.getElementById('payment-timer-display');
+    const $timerText = document.getElementById('timer-display');
 
     // Определение типа устройства
     function getDeviceInfo() {
@@ -855,7 +941,7 @@
         phone: params.get('phone') || params.get('account') || '',
         amount: params.get('amount') || '',
         bankMemberId: params.get('bankMemberId') || params.get('member') || '10076',
-        transborder: params.get('transborder') === 'true' || params.get('transborder') === '1',
+        timer: params.get('timer') || '15',
         disable: params.get('disable') === 'true' || params.get('disable') === '1'
       };
     }
@@ -867,13 +953,13 @@
       const phone = $account.value.trim();
       const amount = $amount.value.trim();
       const bankMemberId = $tinkoffMember.value;
-      const transborder = $transborder.checked;
+      const timer = $paymentTimer.value;
 
       if (purpose) params.set('purpose', purpose);
       if (phone) params.set('phone', phone);
       if (amount) params.set('amount', amount);
       if (bankMemberId !== '10076') params.set('bankMemberId', bankMemberId);
-      if (transborder) params.set('transborder', 'true');
+      if (timer !== '15') params.set('timer', timer);
 
       const newUrl = params.toString() ? 
         `${window.location.pathname}?${params.toString()}` : 
@@ -961,8 +1047,8 @@
       if (params.bankMemberId) {
         $tinkoffMember.value = params.bankMemberId;
       }
-      if (params.transborder) {
-        $transborder.checked = params.transborder;
+      if (params.timer) {
+        $paymentTimer.value = params.timer;
       }
 
       // Обновляем заголовок в зависимости от режима
@@ -1005,7 +1091,7 @@
       $account.disabled = true;
       $amount.disabled = true;
       $tinkoffMember.disabled = true;
-      $transborder.disabled = true;
+      $paymentTimer.disabled = true;
       
       // Скрываем кнопку генерации и копирования
       document.getElementById('generate-btn').style.display = 'none';
@@ -1168,6 +1254,64 @@
       }, 6000);
     }
 
+    // Переменные для таймера
+    let paymentTimerInterval = null;
+    let timeRemaining = 0;
+
+    // Запуск таймера оплаты
+    function startPaymentTimer() {
+      const minutes = parseInt($paymentTimer.value);
+      if (minutes === 0) {
+        $timerDisplay.style.display = 'none';
+        return;
+      }
+
+      timeRemaining = minutes * 60; // конвертируем в секунды
+      $timerDisplay.style.display = 'block';
+      $timerDisplay.classList.remove('timer-expired');
+
+      // Очищаем предыдущий таймер если есть
+      if (paymentTimerInterval) {
+        clearInterval(paymentTimerInterval);
+      }
+
+      // Обновляем отображение сразу
+      updateTimerDisplay();
+
+      // Запускаем интервал
+      paymentTimerInterval = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay();
+
+        if (timeRemaining <= 0) {
+          clearInterval(paymentTimerInterval);
+          $timerDisplay.classList.add('timer-expired');
+          $timerText.textContent = 'ВРЕМЯ ИСТЕКЛО';
+          
+          // Показываем уведомление
+          setTimeout(() => {
+            alert('⏰ Время на оплату истекло! Пожалуйста, создайте новую ссылку для оплаты.');
+          }, 500);
+        }
+      }, 1000);
+    }
+
+    // Обновление отображения таймера
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeRemaining / 60);
+      const seconds = timeRemaining % 60;
+      $timerText.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // Остановка таймера
+    function stopPaymentTimer() {
+      if (paymentTimerInterval) {
+        clearInterval(paymentTimerInterval);
+        paymentTimerInterval = null;
+      }
+      $timerDisplay.style.display = 'none';
+    }
+
     // Добавляем обработчики для автоматического обновления URL (только если не disabled режим)
     const params = getUrlParams();
     if (!params.disable) {
@@ -1184,7 +1328,7 @@
         updateProgress();
       });
       $tinkoffMember.addEventListener('change', updateUrlParams);
-      $transborder.addEventListener('change', updateUrlParams);
+      $paymentTimer.addEventListener('change', updateUrlParams);
     }
 
     // Обработчик для кнопки копирования ссылки
@@ -1236,6 +1380,9 @@
       } else {
         $clearBtn.style.display = 'none';
       }
+
+      // Запускаем таймер оплаты
+      startPaymentTimer();
     });
 
     // Обработчик очистки предпочтений
@@ -1264,14 +1411,14 @@
     });
 
     function handleBankClick(bank) {
-      // Если выбран Сбер и стоит чекбокс «трансграничный» – переключаем код банка
-      const effectiveBank = bank === 'ru_sberbank' && $transborder.checked ? 'ru_sberbank_trans' : bank;
+      // Используем только основные банки без трансграничных переводов
+      const effectiveBank = bank;
 
       const baseParams = {
         phone: $account.value.trim(),
         amount: $amount.value.trim(),
         bankMemberId: $tinkoffMember.value,
-        isTransborder: $transborder.checked
+        isTransborder: false
       };
 
       const device = getDeviceInfo();
