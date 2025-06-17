@@ -17,7 +17,7 @@ export function buildForSber({ phone, amount, platform }) {
       
       // 2. sbolonline  
       `sbolonline://payments/${isCard ? 
-        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
+        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber}` : 
         `p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
       
       // 3. ios-app-smartonline
@@ -27,7 +27,7 @@ export function buildForSber({ phone, amount, platform }) {
       
       // 4. app-online-ios
       `app-online-ios://payments/${isCard ? 
-        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
+        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber}` : 
         `p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
       
       // 5. btripsexpenses
