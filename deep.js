@@ -79,7 +79,8 @@ function toCents(amount) {
       'ios-app-smartonline://sbolonline/abroadtransfers/foreignbank',
       'app-online-ios://abroadtransfers/foreignbank',
       'btripsexpenses://sbolonline/abroadtransfers/foreignbank',
-      'sberbankonline://transfers/abroad/foreignbank'
+      'sberbankonline://transfers/abroad/foreignbank',
+      'bank100000000111://abroadtransfers/foreignbank'  // новая схема для трансграничных
     ];
 
     const androidSchemes = [
