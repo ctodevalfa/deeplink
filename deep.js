@@ -101,58 +101,45 @@ function toCents(amount) {
   }
   
   function buildForSber({ phone, amount, platform }) {
-    // Новая инсайд логика для Сбера (более точная)
-    const isCard = /^\d{16}$/.test(phone);
+    // Оригинальная инсайд логика точно как в источнике
+    const isCard  = /^\d{16}$/.test(phone);
     const isPhone = /^\d{11}$/.test(phone) && phone.startsWith('79');
-    const sum = Math.round(amount * 100); // конвертируем в копейки
-    
+    const sum     = Math.round(amount * 100);
+
     if (platform === 'ios') {
-      // iOS схемы с новой логикой
-      const baseSchemes = [
-        'sberbankonline',     // основная схема
-        'sbolonline',         // альтернативная
-        'budgetonline-ios',
-        'ios-app-smartonline',
-        'app-online-ios',
-        'btripsexpenses',
-        'bank100000000111'    // новая схема
+      // Точно как в оригинале - разные base для карт и телефонов
+      const base = isCard
+        ? 'sberbankonline://p2ptransfer'
+        : 'sberbankonline://payments/p2p-by-phone-number';
+      
+      // Основная ссылка точно как в оригинале
+      const mainLink = isCard
+        ? `${base}?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`
+        : `${base}?phoneNumber=${phone}`;
+      
+      // Добавляем проверенные альтернативные схемы для fallback
+      const altLinks = [
+        // sbolonline - частая альтернатива
+        isCard
+          ? `sbolonline://p2ptransfer?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`
+          : `sbolonline://payments/p2p-by-phone-number?phoneNumber=${phone}`
       ];
       
-      return baseSchemes.map(scheme => {
-        if (isCard) {
-          // Для карт: p2ptransfer с полными параметрами
-          const base = scheme === 'sbolonline' ? `${scheme}://` : `${scheme}://`;
-          return `${base}p2ptransfer?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`;
-        } else {
-          // Для телефонов: p2p-by-phone-number (только номер без суммы в iOS)
-          const base = scheme === 'sbolonline' ? `${scheme}://` : `${scheme}://`;
-          return `${base}payments/p2p-by-phone-number?phoneNumber=${phone}`;
-        }
-      });
-    } else {
-      // Android схемы с новой логикой
+      return [mainLink, ...altLinks];
+    } else { // android
       const reqType = isCard ? 'card_number' : 'phone_number';
-      const baseSchemes = [
-        'sberbankonline://ru.sberbankmobile/payments/p2p',
-        'intent://ru.sberbankmobile/payments/p2p',
-        'android-app://ru.sberbankmobile/payments/p2p'
+      const baseLink = `intent://ru.sberbankmobile/payments/p2p?type=${reqType}`
+           + `&requisiteNumber=${phone}`
+           + (isCard ? `&amount=${sum}` : '')
+           + '#Intent;scheme=https;end';
+      
+      // Альтернативные схемы для Android
+      const altLinks = [
+        `sberbankonline://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
+        `android-app://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`
       ];
       
-      return baseSchemes.map(base => {
-        let link = `${base}?type=${reqType}&requisiteNumber=${phone}`;
-        
-        // Добавляем сумму только для карт в Android
-        if (isCard) {
-          link += `&amount=${sum}`;
-        }
-        
-        // Для intent схем добавляем окончание
-        if (base.startsWith('intent://')) {
-          link += '#Intent;scheme=https;end';
-        }
-        
-        return link;
-      });
+      return [baseLink, ...altLinks];
     }
   }
   
