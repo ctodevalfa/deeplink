@@ -136,27 +136,34 @@ function toCents(amount) {
       
       // Точная логика согласно оригинальному обфусцированному коду
       schemes.forEach(scheme => {
-        let baseUrl;
         
-        // Определяем базовый URL согласно оригинальному коду
-        if (scheme === 'budgetonline-ios') {
-          baseUrl = `${scheme}://sbolonline`;
-        } else if (scheme === 'sbolonline') {
-          baseUrl = `${scheme}://payments`;
-        } else if (scheme === 'ios-app-smartonline') {
-          baseUrl = `${scheme}://sbolonline`;
-        } else if (scheme === 'app-online-ios') {
-          baseUrl = `${scheme}://payments`;
-        } else if (scheme === 'btripsexpenses') {
-          baseUrl = `${scheme}://sbolonline`;
-        }
-        
+        // Формируем URL согласно оригинальному обфусцированному коду
         if (isCard) {
           // Для карт: p2ptransfer с параметрами
-          links.push(`${baseUrl}/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          if (scheme === 'budgetonline-ios') {
+            links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          } else if (scheme === 'sbolonline') {
+            links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          } else if (scheme === 'ios-app-smartonline') {
+            links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          } else if (scheme === 'app-online-ios') {
+            links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          } else if (scheme === 'btripsexpenses') {
+            links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          }
         } else {
-          // Для телефонов: p2p-by-phone-number
-          links.push(`${baseUrl}/p2p-by-phone-number?phoneNumber=${phone}`);
+          // Для телефонов: точные пути согласно оригинальному коду
+          if (scheme === 'budgetonline-ios') {
+            links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          } else if (scheme === 'sbolonline') {
+            links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          } else if (scheme === 'ios-app-smartonline') {
+            links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          } else if (scheme === 'app-online-ios') {
+            links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          } else if (scheme === 'btripsexpenses') {
+            links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+          }
         }
               });
       
