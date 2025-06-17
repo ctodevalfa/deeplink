@@ -7,11 +7,11 @@
    ------------------------------------------------------------------------- */
 
    const DEFAULT_BANK = 'ru_sberbank';     // если не передали bank
+   const ua       = typeof navigator !== 'undefined' ? navigator.userAgent : '';
    const PLATFORM =
-     /iPhone|iPad|iPod/i.test(navigator?.userAgent ?? '') ? 'ios' :
-     /Android/i.test(navigator?.userAgent ?? '')          ? 'android' :
-     'desktop';
-   
+    /iPhone|iPad|iPod/i.test(ua) ? 'ios' :
+    /Android/i.test(ua)          ? 'android' :
+    'desktop';
    /* ---------------------------------------------------------------------------
       Карта схем для каждого банка
       Для iOS массив alias-ов перебирается до первого успешного открытия,
