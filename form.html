@@ -7,17 +7,19 @@
   <title>Deeplink Generator</title>
   <style>
     :root {
-      --bg: #f8fafc;
+      --bg: #f5f7fa;
       --card-bg: #ffffff;
-      --border: #e2e8f0;
-      --text: #1e293b;
-      --text-muted: #64748b;
-      --primary: #3b82f6;
-      --primary-hover: #2563eb;
-      --radius: 16px;
-      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --border: #e1e8ed;
+      --text: #14171a;
+      --text-muted: #5b7083;
+      --primary: #1da1f2;
+      --primary-hover: #1991db;
+      --success: #17bf63;
+      --radius: 20px;
+      --radius-sm: 12px;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+      --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.18);
     }
 
     * {
@@ -26,14 +28,15 @@
 
     body {
       margin: 0;
-      padding: 32px 20px;
+      padding: 20px;
       font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--bg);
       color: var(--text);
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       min-height: 100vh;
+      padding-top: 40px;
     }
 
     .card {
@@ -41,10 +44,9 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       width: 100%;
-      max-width: 420px;
-      padding: 32px 28px 36px;
+      max-width: 440px;
+      padding: 40px 32px;
       box-shadow: var(--shadow-xl);
-      backdrop-filter: blur(20px);
       position: relative;
     }
 
@@ -54,8 +56,8 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), var(--success));
       border-radius: var(--radius) var(--radius) 0 0;
     }
 
@@ -84,10 +86,10 @@
 
     input, select {
       width: 100%;
-      padding: 14px 16px;
+      padding: 16px 20px;
       font-size: 16px;
       border: 2px solid var(--border);
-      border-radius: 12px;
+      border-radius: var(--radius-sm);
       background: #fff;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: inherit;
@@ -97,7 +99,7 @@
     input:focus, select:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+      box-shadow: 0 0 0 4px rgba(29, 161, 242, 0.1);
       transform: translateY(-1px);
     }
 
@@ -198,68 +200,69 @@
     .banks {
       margin-top: 32px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
     }
 
     .bank-btn {
       padding: 0;
-      border: none;
-      border-radius: 12px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: var(--shadow);
       overflow: hidden;
-      background: none;
+      background: #fff;
       width: 100%;
-      height: 48px;
+      height: 64px;
       position: relative;
       display: block;
     }
 
-    .bank-btn::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.05);
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      pointer-events: none;
-      border-radius: 12px;
-    }
-
-    .bank-btn:hover::after {
-      opacity: 1;
-    }
-
     .bank-btn:hover { 
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: var(--shadow-xl);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary);
     }
 
     .bank-btn:active {
-      transform: translateY(-2px) scale(1.01);
+      transform: translateY(0);
     }
 
     .bank-btn object {
       width: 100%;
-      height: 48px;
+      height: 100%;
       display: block;
       pointer-events: none;
-      border-radius: 12px;
-      object-fit: cover;
+      border-radius: var(--radius-sm);
+      object-fit: contain;
+      padding: 8px;
+    }
+
+    .hints-container {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
     }
 
     .hint {
       font-size: 13px;
       color: var(--text-muted);
-      margin-top: 16px;
+      margin-bottom: 12px;
       text-align: center;
       font-weight: 500;
       line-height: 1.4;
+    }
+
+    .hint:last-child {
+      margin-bottom: 0;
+    }
+
+    .hint-small {
+      font-size: 12px;
+      color: #999;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     code {
@@ -269,31 +272,76 @@
       font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
       font-size: 11px;
       color: #333;
+      white-space: nowrap;
+      margin: 0 2px;
     }
 
     @media (max-width: 480px) {
       body {
-        padding: 20px 16px;
+        padding: 16px;
+        padding-top: 20px;
       }
       
       .card {
-        padding: 24px 20px 28px;
+        padding: 32px 24px;
+        max-width: 100%;
+        border-radius: var(--radius-sm);
       }
       
       .banks {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 16px;
+        margin-top: 24px;
+      }
+      
+      .bank-btn {
+        height: 56px;
       }
       
       h1 {
-        font-size: 22px;
+        font-size: 24px;
+        margin-bottom: 24px;
+      }
+      
+      input, select {
+        padding: 14px 16px;
+        font-size: 16px;
+      }
+      
+      .field-group {
+        margin-bottom: 16px;
+      }
+      
+      .hints-container {
+        margin-top: 20px;
+        padding-top: 16px;
+      }
+      
+      .hint {
+        font-size: 12px;
+      }
+      
+      .hint-small {
+        font-size: 11px;
+        line-height: 1.3;
+      }
+      
+      code {
+        font-size: 10px;
+        padding: 1px 4px;
+        margin: 0 1px;
       }
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Сформировать deeplink-ссылки</h1>
+    <h1 id="form-title">Создание формы оплаты</h1>
+
+    <div class="field-group">
+      <label class="field-label" for="purpose">Назначение платежа</label>
+      <input id="purpose" type="text" placeholder="Оплата услуг, товаров..." />
+    </div>
 
     <div class="field-group">
       <label class="field-label" for="account">Телефон «+7…» или № карты</label>
@@ -333,10 +381,12 @@
       Очистить предпочтения
     </button>
     
-    <div class="hint" id="device-hint">Запуск deeplink-ов корректно работает при открытии страницы через HTTP-сервер.</div>
-    
-    <div class="hint" style="margin-top: 8px; font-size: 12px; color: #999;">
-      💡 Поддерживаемые URL параметры: <code>?phone=79991234567&amount=1000&bankMemberId=10076&transborder=true&disable=true</code>
+    <div class="hints-container">
+      <div class="hint" id="device-hint">Запуск deeplink-ов корректно работает при открытии страницы через HTTP-сервер.</div>
+      
+      <div class="hint hint-small">
+        💡 URL параметры: <code>purpose</code>, <code>phone</code>, <code>amount</code>, <code>bankMemberId</code>, <code>transborder</code>, <code>disable</code>
+      </div>
     </div>
   </div>
 
@@ -349,6 +399,7 @@
       ru_vtb: { label: 'VTB Pay', css: 'vtb', icon: './vtb_logo.svg' }
     };
 
+    const $purpose = document.getElementById('purpose');
     const $account = document.getElementById('account');
     const $amount = document.getElementById('amount');
     const $tinkoffMember = document.getElementById('tinkoff-member');
@@ -357,6 +408,7 @@
     const $clearBtn = document.getElementById('clear-preferences');
     const $hint = document.getElementById('device-hint');
     const $copyLinkBtn = document.getElementById('copy-link-btn');
+    const $formTitle = document.getElementById('form-title');
 
     // Определение типа устройства
     function getDeviceInfo() {
@@ -545,6 +597,7 @@
     function getUrlParams() {
       const params = new URLSearchParams(window.location.search);
       return {
+        purpose: params.get('purpose') || '',
         phone: params.get('phone') || params.get('account') || '',
         amount: params.get('amount') || '',
         bankMemberId: params.get('bankMemberId') || params.get('member') || '10076',
@@ -556,11 +609,13 @@
     function updateUrlParams() {
       const params = new URLSearchParams();
       
+      const purpose = $purpose.value.trim();
       const phone = $account.value.trim();
       const amount = $amount.value.trim();
       const bankMemberId = $tinkoffMember.value;
       const transborder = $transborder.checked;
 
+      if (purpose) params.set('purpose', purpose);
       if (phone) params.set('phone', phone);
       if (amount) params.set('amount', amount);
       if (bankMemberId !== '10076') params.set('bankMemberId', bankMemberId);
@@ -575,6 +630,11 @@
 
       // Показываем/скрываем кнопку копирования
       updateCopyLinkButton(phone, amount);
+      
+      // Обновляем заголовок в обычном режиме
+      if (!getUrlParams().disable) {
+        updateFormTitle({ disable: false, purpose: purpose });
+      }
     }
 
     function updateCopyLinkButton(phone, amount) {
@@ -628,6 +688,9 @@
     function fillFormFromUrl() {
       const params = getUrlParams();
       
+      if (params.purpose) {
+        $purpose.value = params.purpose;
+      }
       if (params.phone) {
         $account.value = params.phone;
       }
@@ -640,6 +703,9 @@
       if (params.transborder) {
         $transborder.checked = params.transborder;
       }
+
+      // Обновляем заголовок в зависимости от режима
+      updateFormTitle(params);
 
       // Применяем disabled режим если нужно
       if (params.disable) {
@@ -656,8 +722,25 @@
       }
     }
 
+    function updateFormTitle(params) {
+      if (params.disable && params.purpose) {
+        // Read-only режим с назначением платежа
+        $formTitle.textContent = params.purpose;
+      } else if (params.disable) {
+        // Read-only режим без назначения
+        $formTitle.textContent = 'Оплата';
+      } else if (params.purpose) {
+        // Обычный режим с назначением
+        $formTitle.textContent = `Создание формы: ${params.purpose}`;
+      } else {
+        // Обычный режим создания формы
+        $formTitle.textContent = 'Создание формы оплаты';
+      }
+    }
+
     function applyDisabledMode() {
       // Делаем поля формы только для чтения
+      $purpose.disabled = true;
       $account.disabled = true;
       $amount.disabled = true;
       $tinkoffMember.disabled = true;
@@ -666,25 +749,6 @@
       // Скрываем кнопку генерации и копирования
       document.getElementById('generate-btn').style.display = 'none';
       $copyLinkBtn.style.display = 'none';
-      
-      // Добавляем индикатор режима только для чтения
-      const readOnlyIndicator = document.createElement('div');
-      readOnlyIndicator.style.cssText = `
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 16px;
-        color: #856404;
-        font-size: 14px;
-        text-align: center;
-        font-weight: 500;
-      `;
-      readOnlyIndicator.innerHTML = '🔒 Режим только для просмотра - данные нельзя изменить';
-      
-      // Вставляем индикатор после заголовка
-      const title = document.querySelector('h1');
-      title.parentNode.insertBefore(readOnlyIndicator, title.nextSibling);
       
       // Автоматически генерируем кнопки банков
       setTimeout(() => {
@@ -745,6 +809,7 @@
     // Добавляем обработчики для автоматического обновления URL (только если не disabled режим)
     const params = getUrlParams();
     if (!params.disable) {
+      $purpose.addEventListener('input', updateUrlParams);
       $account.addEventListener('input', updateUrlParams);
       $amount.addEventListener('input', updateUrlParams);
       $tinkoffMember.addEventListener('change', updateUrlParams);
