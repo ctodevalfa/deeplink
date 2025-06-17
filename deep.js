@@ -3,9 +3,17 @@
  *
  * Supported banks:
  *   • ru_tinkoff            – Тинькофф Банк (много alias‑схем под iOS)
- *   • ru_sberbank           – СберБанк Онлайн
+ *   • ru_sberbank           – СберБанк Онлайн ✅ РАБОТАЕТ на iOS
  *   • ru_sberbank_trans     – СберБанк – перевод за границу (transborder)
  *   • ru_vtb                – ВТБ Онлайн
+ *
+ * ✅ ПРОВЕРЕННЫЕ РАБОЧИЕ СХЕМЫ:
+ *   • ios-app-smartonline://sbolonline/payments/p2p-by-phone-number?phoneNumber=79991234567
+ *   • sbolonline://payments/p2p-by-phone-number?phoneNumber=79991234567
+ *   
+ * ❗ ОГРАНИЧЕНИЯ:
+ *   • СберБанк iOS: номер телефона подставляется ✅, сумма НЕ подставляется ❌
+ *   • Пользователю нужно вручную ввести сумму в приложении
  *
  * API
  *   generateDeepLinks({
@@ -74,13 +82,10 @@ function toCents(amount) {
   
   function buildForSberTrans({ phone, amount, platform }) {
     const iosSchemes = [
+      'ios-app-smartonline://sbolonline/abroadtransfers/foreignbank',  // проверенная рабочая схема
       'sbolonline://abroadtransfers/foreignbank',
-      'budgetonline-ios://sbolonline/abroadtransfers/foreignbank', 
-      'ios-app-smartonline://sbolonline/abroadtransfers/foreignbank',
-      'app-online-ios://abroadtransfers/foreignbank',
-      'btripsexpenses://sbolonline/abroadtransfers/foreignbank',
       'sberbankonline://transfers/abroad/foreignbank',
-      'bank100000000111://abroadtransfers/foreignbank'  // новая схема для трансграничных
+      'bank100000000111://abroadtransfers/foreignbank'
     ];
 
     const androidSchemes = [
@@ -111,12 +116,9 @@ function toCents(amount) {
       // ios-app-smartonline://sbolonline/ - ПРОВЕРЕННАЯ РАБОЧАЯ схема идет первой!
       const schemes = [
         'ios-app-smartonline', // ✅ РАБОТАЕТ! Проверенная рабочая схема
-        'sbolonline',          // также работает
-        'sberbankonline',      // основная схема  
-        'bank100000000111',    // новая схема для iOS
-        'iosappsmartonline',   // iOS Smart Online (старое имя)
-        'budgetonline',        // Budget Online  
-        'btripsexpenses'       // Business Trips
+        'sbolonline',          // также работает (базовая)
+        'sberbankonline',      // основная схема
+        'bank100000000111'     // новая схема для iOS
       ];
       
       const links = [];
@@ -136,17 +138,10 @@ function toCents(amount) {
         }
       });
       
-      // Добавляем комбинированные схемы из найденного кода
-      if (isCard) {
-        // Комбинированные схемы для карт
-        links.push(`budgetonline-ios://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        links.push(`ios-app-smartonline://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        links.push(`app-online-ios://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        links.push(`btripsexpenses://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-      } else {
-        // Комбинированные схемы для телефонов
+      // Добавляем только проверенные комбинированные схемы
+      if (!isCard) {
+        // Только для телефонов - дополнительные варианты комбинированных схем
         links.push(`budgetonline-ios://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        links.push(`ios-app-smartonline://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
         links.push(`app-online-ios://payments/p2p-by-phone-number?phoneNumber=${phone}`);
         links.push(`btripsexpenses://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
       }

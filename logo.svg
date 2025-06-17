@@ -1,0 +1,22 @@
+<svg width="280" height="80" viewBox="0 0 280 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00b956"/>
+      <stop offset="100%" stop-color="#007f3e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Иконка (стрелка вправо в круге) -->
+  <circle cx="40" cy="40" r="30" fill="url(#grad)" />
+  <path d="M32 28 L45 40 L32 52" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Текст: Express Pay -->
+  <text x="80" y="46" font-family="Segoe UI, Roboto, sans-serif" font-size="28" fill="#003f2d" font-weight="600">
+    Express Pay
+  </text>
+
+  <!-- Подпись: адрес сайта -->
+  <text x="80" y="66" font-family="Segoe UI, Roboto, sans-serif" font-size="14" fill="#6c757d">
+    express-pay.io
+  </text>
+</svg>

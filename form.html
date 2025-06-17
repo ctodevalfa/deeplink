@@ -3,7 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="Express Pay - Быстрые P2P переводы через СБП. Создание deeplink ссылок для мгновенных платежей через мобильные приложения банков." />
+  <meta name="keywords" content="СБП, P2P переводы, быстрые платежи, СберБанк, Тинькофф, ВТБ, deeplinks" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Express Pay - Быстрые платежи" />
+  <meta property="og:description" content="Мгновенные P2P переводы через СБП. Поддержка всех крупных банков России." />
+  <meta property="og:image" content="./favicon.svg" />
+  <meta property="og:url" content="https://express-pay.io" />
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Express Pay - Быстрые платежи" />
+  <meta name="twitter:description" content="Мгновенные P2P переводы через СБП" />
+  <meta name="twitter:image" content="./favicon.svg" />
+  
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Фавиконки для лучшей совместимости -->
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+  <link rel="apple-touch-icon" href="./favicon.svg" />
   <title>Express Pay - Быстрые платежи</title>
   <style>
     :root {
@@ -122,6 +142,15 @@
       text-align: center;
       margin-bottom: 32px;
       position: relative;
+    }
+
+    .brand-header svg {
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+      transition: transform 0.2s ease;
+    }
+
+    .brand-header svg:hover {
+      transform: scale(1.02);
     }
 
     .brand-logo {
@@ -784,6 +813,11 @@
         margin-bottom: 16px !important;
       }
 
+      .readonly-mode .brand-header svg {
+        width: 200px !important;
+        height: 57px !important;
+      }
+
       .readonly-mode h1 {
         font-size: 20px !important;
         margin-bottom: 16px !important;
@@ -843,9 +877,28 @@
 <body>
   <div class="card">
     <div class="brand-header">
-      <div class="brand-logo">
-        Express Pay
-      </div>
+      <svg width="240" height="68" viewBox="0 0 280 80" xmlns="http://www.w3.org/2000/svg" style="display: block; margin: 0 auto;">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00b956"/>
+            <stop offset="100%" stop-color="#007f3e"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Иконка (стрелка вправо в круге) -->
+        <circle cx="40" cy="40" r="30" fill="url(#grad)" />
+        <path d="M32 28 L45 40 L32 52" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+        <!-- Текст: Express Pay -->
+        <text x="80" y="46" font-family="Inter, Segoe UI, Roboto, sans-serif" font-size="28" fill="#003f2d" font-weight="600">
+          Express Pay
+        </text>
+
+        <!-- Подпись: адрес сайта -->
+        <text x="80" y="66" font-family="Inter, Segoe UI, Roboto, sans-serif" font-size="14" fill="#6c757d">
+          express-pay.io
+        </text>
+      </svg>
     </div>
 
 
@@ -956,7 +1009,13 @@
 
     const BANKS = {
       ru_tinkoff: { label: 'T-Pay', css: 'tinkoff', icon: './t_pay.svg' },
-      ru_sberbank: { label: 'SberPay', css: 'sber', icon: './sber_pay.svg' },
+      ru_sberbank: { 
+        label: 'SberPay', 
+        css: 'sber', 
+        icon: './sber_pay.svg',
+        // ✅ Рабочая схема: ios-app-smartonline://sbolonline/payments/p2p-by-phone-number?phoneNumber=...
+        // ❗ Сумма не подставляется автоматически (нужно вводить вручную в приложении)
+      },
       ru_vtb: { label: 'VTB Pay', css: 'vtb', icon: './vtb_pay.svg' }
     };
 
