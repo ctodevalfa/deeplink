@@ -638,6 +638,13 @@
     }
 
     function updateCopyLinkButton(phone, amount) {
+      const params = getUrlParams();
+      // Не показываем кнопку в read-only режиме
+      if (params.disable) {
+        $copyLinkBtn.style.display = 'none';
+        return;
+      }
+      
       if (phone && amount) {
         $copyLinkBtn.style.display = 'block';
       } else {
@@ -749,6 +756,9 @@
       // Скрываем кнопку генерации и копирования
       document.getElementById('generate-btn').style.display = 'none';
       $copyLinkBtn.style.display = 'none';
+      
+      // Скрываем блок с подсказками о URL параметрах
+      document.querySelector('.hints-container').style.display = 'none';
       
       // Автоматически генерируем кнопки банков
       setTimeout(() => {
