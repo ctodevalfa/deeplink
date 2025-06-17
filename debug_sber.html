@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>🐛 Отладка СберБанк iOS</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .link { margin: 5px 0; padding: 5px; background: #f0f0f0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>🐛 Отладка генерации ссылок СберБанк iOS</h1>
+    
+    <div id="output"></div>
+
+    <script type="module">
+        import { generateDeepLinks } from './deep.js';
+
+        const output = document.getElementById('output');
+        
+        try {
+            console.log('🔄 Запуск генерации ссылок...');
+            
+            const links = generateDeepLinks({
+                phone: '+79381876034',
+                amount: 1000,
+                bank: 'ru_sberbank',
+                platform: 'ios'
+            });
+
+            output.innerHTML = `
+                <div class="success">✅ Успешно сгенерировано: ${links.length} ссылок</div>
+                <h3>Список ссылок:</h3>
+                ${links.map((link, i) => `
+                    <div class="link">${i + 1}. ${link}</div>
+                `).join('')}
+            `;
+
+            console.log(`📊 Количество ссылок: ${links.length}`);
+            console.log('📋 Список ссылок:', links);
+            
+        } catch (error) {
+            output.innerHTML = `<div class="error">❌ Ошибка: ${error.message}</div>`;
+            console.error('❌ Ошибка генерации:', error);
+        }
+    </script>
+</body>
+</html> 
