@@ -71,6 +71,7 @@
         <p>Тестируем схемы Сбера с детальным логированием:</p>
         <button class="btn" onclick="diagnoseScheme('sberbankonline')">sberbankonline://</button>
         <button class="btn" onclick="diagnoseScheme('sbolonline')">sbolonline://</button>
+        <button class="btn" onclick="diagnoseScheme('bank100000000111')">bank100000000111://</button>
         <button class="btn" onclick="diagnoseScheme('sberpay')">sberpay://</button>
         <div id="diagnosis-result"></div>
     </div>
@@ -81,6 +82,9 @@
         <button class="btn" onclick="diagnoseScheme('sber')">sber://</button>
         <button class="btn" onclick="diagnoseScheme('sberbank')">sberbank://</button>
         <button class="btn" onclick="diagnoseScheme('sbermobile')">sbermobile://</button>
+        <button class="btn" onclick="diagnoseScheme('iosappsmartonline')">iosappsmartonline://</button>
+        <button class="btn" onclick="diagnoseScheme('budgetonline')">budgetonline://</button>
+        <button class="btn" onclick="diagnoseScheme('btripsexpenses')">btripsexpenses://</button>
     </div>
     
     <div class="test-section">
@@ -138,39 +142,56 @@
         function checkSberInstalled() {
             log('Проверяем установку приложения Сбер...');
             
-            // Попробуем простейшую схему
-            const testUrl = 'sberbankonline://';
+            // Попробуем разные схемы по порядку
+            const schemes = ['sberbankonline', 'bank100000000111', 'sbolonline'];
+            let currentSchemeIndex = 0;
+            let appFound = false;
             
-            let timeoutId;
-            let startTime = Date.now();
-            
-            // Отслеживаем потерю фокуса (может означать открытие приложения)
-            function onBlur() {
-                const timeElapsed = Date.now() - startTime;
-                log(`Страница потеряла фокус через ${timeElapsed}ms - возможно приложение открылось`);
-                clearTimeout(timeoutId);
-                showResult('sber-check-result', '✅ Приложение Сбер скорее всего установлено!', 'success');
-                window.removeEventListener('blur', onBlur);
-            }
-            
-            window.addEventListener('blur', onBlur);
-            
-            try {
-                window.location.href = testUrl;
-                log(`Попытка перехода: ${testUrl}`);
+            function testNextScheme() {
+                if (currentSchemeIndex >= schemes.length || appFound) {
+                    if (!appFound) {
+                        log('Все схемы проверены - приложение не найдено');
+                        showResult('sber-check-result', '❌ Приложение Сбер скорее всего НЕ установлено', 'error');
+                    }
+                    return;
+                }
                 
-                timeoutId = setTimeout(() => {
+                const scheme = schemes[currentSchemeIndex++];
+                const testUrl = `${scheme}://`;
+                let startTime = Date.now();
+                
+                // Отслеживаем потерю фокуса (может означать открытие приложения)
+                function onBlur() {
                     const timeElapsed = Date.now() - startTime;
-                    log(`Через ${timeElapsed}ms фокус не потерян - приложение вероятно не установлено`);
-                    showResult('sber-check-result', '❌ Приложение Сбер скорее всего НЕ установлено', 'error');
+                    log(`Схема ${scheme}: фокус потерян через ${timeElapsed}ms - приложение найдено!`);
+                    appFound = true;
+                    showResult('sber-check-result', `✅ Приложение Сбер установлено! Рабочая схема: ${scheme}://`, 'success');
                     window.removeEventListener('blur', onBlur);
-                }, 3000);
+                }
                 
-            } catch (e) {
-                log(`Ошибка при проверке: ${e.message}`);
-                showResult('sber-check-result', `❌ Ошибка: ${e.message}`, 'error');
-                window.removeEventListener('blur', onBlur);
+                window.addEventListener('blur', onBlur);
+                
+                try {
+                    window.location.href = testUrl;
+                    log(`Проверяем схему: ${testUrl}`);
+                    
+                    setTimeout(() => {
+                        if (!appFound) {
+                            const timeElapsed = Date.now() - startTime;
+                            log(`Схема ${scheme}: через ${timeElapsed}ms фокус не потерян - пробуем следующую`);
+                            window.removeEventListener('blur', onBlur);
+                            testNextScheme();
+                        }
+                    }, 2000);
+                    
+                } catch (e) {
+                    log(`Ошибка при проверке схемы ${scheme}: ${e.message}`);
+                    window.removeEventListener('blur', onBlur);
+                    testNextScheme();
+                }
             }
+            
+            testNextScheme();
         }
         
         function diagnoseScheme(scheme) {
