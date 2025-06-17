@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Простой тест deeplinks</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 20px;
+            margin: 15px 0;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            background: #007AFF;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+        }
+        .btn:active {
+            background: #0056CC;
+            transform: scale(0.95);
+        }
+        .working-schemes {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Простой тест deeplinks</h1>
+    
+    <div class="working-schemes">
+        <h3>Рабочие схемы с вашего iPhone:</h3>
+        <ul>
+            <li><code>sberbankonline://</code></li>
+            <li><code>sbolonline://</code></li>
+            <li><code>iosappsmartonline://</code></li>
+            <li><code>budgetonline://</code></li>
+            <li><code>btripsexpenses://</code></li>
+        </ul>
+    </div>
+
+    <p><strong>Тестируем простые переходы без лишних обработчиков:</strong></p>
+    
+    <a href="sberbankonline://payments/p2p-by-phone-number?phoneNumber=79991234567" class="btn">
+        1️⃣ sberbankonline:// (основная)
+    </a>
+    
+    <a href="sbolonline://payments/p2p-by-phone-number?phoneNumber=79991234567" class="btn">
+        2️⃣ sbolonline:// (альтернатива)  
+    </a>
+    
+    <a href="iosappsmartonline://payments/p2p-by-phone-number?phoneNumber=79991234567" class="btn">
+        3️⃣ iosappsmartonline:// (iOS Smart)
+    </a>
+    
+    <a href="budgetonline://payments/p2p-by-phone-number?phoneNumber=79991234567" class="btn">
+        4️⃣ budgetonline:// (Budget)
+    </a>
+    
+    <a href="btripsexpenses://payments/p2p-by-phone-number?phoneNumber=79991234567" class="btn">
+        5️⃣ btripsexpenses:// (Business)
+    </a>
+    
+    <hr>
+    
+    <button class="btn" onclick="testAllSchemes()" style="background: #34C759;">
+        🚀 Автотест всех схем (по очереди)
+    </button>
+    
+    <div id="log" style="background: #f5f5f5; padding: 10px; margin-top: 20px; border-radius: 5px; font-family: monospace; font-size: 12px; display: none;"></div>
+
+    <script>
+        function log(msg) {
+            const logDiv = document.getElementById('log');
+            logDiv.style.display = 'block';
+            logDiv.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
+            console.log(msg);
+        }
+        
+        function testAllSchemes() {
+            const schemes = [
+                'sberbankonline',
+                'sbolonline', 
+                'iosappsmartonline',
+                'budgetonline',
+                'btripsexpenses'
+            ];
+            
+            let index = 0;
+            
+            function testNext() {
+                if (index >= schemes.length) {
+                    log('✅ Все схемы протестированы');
+                    return;
+                }
+                
+                const scheme = schemes[index++];
+                const url = `${scheme}://payments/p2p-by-phone-number?phoneNumber=79991234567`;
+                
+                log(`🔄 Тестируем схему ${index}/${schemes.length}: ${scheme}`);
+                
+                // Простейший переход
+                window.location.href = url;
+                
+                // Если через 2 секунды мы все еще здесь, пробуем следующую
+                setTimeout(() => {
+                    log(`❌ Схема ${scheme} не сработала, пробуем следующую...`);
+                    testNext();
+                }, 2000);
+            }
+            
+            document.getElementById('log').innerHTML = '';
+            log('🚀 Начинаем автотест схем...');
+            testNext();
+        }
+    </script>
+</body>
+</html> 

@@ -1,131 +1,115 @@
-/**
- * sbpDeepLinks.js + grabDeepLinks.js – consolidated file
- * ---------------------------------------------------------------------------
- *   • sbpDeepLinks.js: generator for Russian SBP/FPS deeplinks (см. предыдущие
- *     ревизии в этом же файле; оставлен без изменений).
- *   • grabDeepLinks.js (Rev 6, 2025‑06‑17): Playwright‑скрейпер для поиска
- *     скрытых deeplink‑ссылок.  Исправлены все падения на старых версиях
- *     Playwright (<1.35), включая «evaluateOnNewDocument is not a function»
- *     и конфликт переопределения window.location.
- * ---------------------------------------------------------------------------
- * USAGE:
- *   node grabDeepLinks.js <URL> [--out=links.json] [--device="Pixel 7"] [--headless=false]
- *
- * NOTE:
- *   • Если Node печатает MODULE_TYPELESS_PACKAGE_JSON, добавьте в корень
- *     проекта файл package.json с содержимым {"type":"module"} или запускайте
- *     скрипт c флагом  --no-warnings.
- *   • Для максимальной совместимости лучше ставить Playwright ≥1.42.
- * ---------------------------------------------------------------------------
- */
+/* ---------------------------------------------------------------------------
+   grabDeepLinks.js  –  Rev 9a  (17 Jun 2025)
+   Высасывает все deep-link’и (intent://, sberbankonline:// …) из одностраничных
+   платёжных сайтов.  Работает как:
+     1. Эмулирует мобильный браузер через Playwright.
+     2. Инъектирует «сниффер» в каждый фрейм (даже динамически появляющиеся).
+     3. Ловит location.href / assign / replace, window.open, pushState / replaceState.
+     4. Параллельно скачивает все .js-бандлы, ищет внутри строковые литералы
+        с ://  (исключая http/https/ws/file/data:image) — выдёргивает схемы.
+     5. Записывает итоговый Set ссылок в stdout либо в --out=<file>.
+--------------------------------------------------------------------------- */
 
-/************************ sbpDeepLinks.js (placeholder) ***********************/
-// … логика генератора deeplink‑ов остаётся без изменений …
-
-/************************ grabDeepLinks.js ***********************************/
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs';
 import { chromium, devices } from 'playwright';
 
-/********************  CLI  *****************************/
-const argv = process.argv.slice(2);
-if (!argv.length) {
-  console.error('USAGE: node grabDeepLinks.js <url> [--out=links.json]');
-  process.exit(1);
-}
-const TARGET_URL = argv[0];
-const OPTS = Object.fromEntries(
-  argv.slice(1).map(a => {
-    const [k, v] = a.replace(/^--?/, '').split('=');
-    return [k, v ?? true];
-  })
-);
+/* ---------- CLI ---------------------------------------------------------------- */
+const URL   = process.argv[2];
+if (!URL) { console.error('Usage: node grabDeepLinks.js <url> [--out=file]'); process.exit(1); }
 
-const DEVICE   = devices[OPTS.device || 'iPhone 13 Pro'] || devices['iPhone 13 Pro'];
-const TIMEOUT  = Number(OPTS.timeout || 25000);
-const HEADLESS = String(OPTS.headless || 'true') !== 'false';
-const OUT_FILE = OPTS.out || null;
+const OUT  = process.argv.find(a => a.startsWith('--out='))?.split('=')[1] ?? null;
+const DEV  = process.argv.find(a => a.startsWith('--device='))?.split('=')[1] ?? 'iPhone 13 Pro';
+const HEAD = process.argv.includes('--headless=false') ? false : true;
+const TIME = Number(process.argv.find(a => a.startsWith('--timeout='))?.split('=')[1]) || 20000;
 
-/********************  Collectors  *********************/
-const links = new Set();
-const add = u => {
-  if (!u) return;
-  if (/^(https?|wss?|file):\/\//i.test(u)) return;
-  if (/^data:image\//i.test(u)) return;
-  links.add(u);
-};
+/* ---------- Sniffer-код, который втыкается в каждую страницу ------------------ */
+const SNIF_SRC = `
+(function(){
+  const found = new Set();
+  const log   = u=>{ if(!found.has(u)){ found.add(u); console.log('[DL]',u);} };
 
-/********************  Browser  *************************/
-await fs.mkdir('/tmp/js-sniff', { recursive: true }).catch(() => {});
-const browser = await chromium.launch({ headless: HEADLESS });
-const ctx     = await browser.newContext({ ...DEVICE, hasTouch: true, locale: 'ru-RU' });
-const page    = await ctx.newPage();
-
-/********************  Sniffer JS (string)  *************/
-const SNIF_SRC = `(() => {
-  const log = url => window.top && window.top.postMessage && window.top.postMessage({ __dl: url }, '*');
-  ['pushState','replaceState'].forEach(fn=>{
-    const orig = history[fn];
-    history[fn] = function(...a){ log(location.href); return orig.apply(this,a); };
+  /* Location.*  (href, assign, replace) */
+  ['assign','replace'].forEach(m=>{
+    const orig = Location.prototype[m];
+    Location.prototype[m] = function(url){ log(url); try{ return orig.call(this,url);}catch(e){} };
   });
-  window.addEventListener('beforeunload',()=>log(location.href));
-  const _open = window.open;
-  window.open = function(u,...r){ log(u); return _open.call(this,u,...r);} ;
-  document.addEventListener('click',e=>{const a=e.target.closest('a[href]'); if(a) log(a.href);},true);
+  Object.defineProperty(Location.prototype,'href',{
+    set(url){ log(url); return url; },
+    get(){ return ''; }
+  });
+
+  /* window.open */
+  const oOpen = window.open;
+  window.open = function(u){ log(u); return oOpen.apply(this,arguments); };
+
+  /* history.push/replaceState */
+  ['pushState','replaceState'].forEach(m=>{
+    const o = history[m];
+    history[m] = function(){ log(location.href); return o.apply(this,arguments); };
+  });
+
+  /* ловим клики по <a href> */
+  addEventListener('click',e=>{
+    const a = e.target.closest('a[href]');
+    if(a) log(a.href);
+  },true);
 })();`;
 
-// add to main context
-await page.addInitScript({ content: SNIF_SRC });
+/* ---------- Основная функция --------------------------------------------------- */
+(async () => {
+  const iphone = devices[DEV] ?? devices['iPhone 13 Pro'];
+  const browser = await chromium.launch({ headless: HEAD });
+  const ctx = await browser.newContext({ ...iphone, hasTouch: true });
+  const page = await ctx.newPage();
 
-// fallback for legacy Playwright: inject into each frame after attach
-page.on('frameattached', async f => {
-  try {
-    if (typeof f.addInitScript === 'function') {
-      await f.addInitScript({ content: SNIF_SRC });
-    } else if (typeof f.evaluate === 'function') {
-      await f.evaluate(SNIF_SRC);
-    }
-  } catch {}
-});
+  /* Инъекция сниффера в основной документ */
+  await page.addInitScript({ content: SNIF_SRC });
 
-ctx.on('page', p => p.on('pageerror', () => {}));
-page.on('pageerror', err => console.error('[PageError]', err.message));
+  /* Инъекция в каждый attach-фрейм  ------------------------------------------- */
+  page.on('frameattached', f => {
+    try {
+      if (typeof f.addInitScript === 'function') {
+        return f.addInitScript({ content: SNIF_SRC });
+      }
+      // fallback для старых Playwright
+      return f.evaluate(SNIF_SRC).catch(()=>{});
+    } catch {}
+  });
 
-// receive messages from SNIF
-page.on('console', msg => {
-  try {
-    const txt = msg.text();
-    if (/^\[DEEPLINK]/.test(txt)) add(txt.slice(10));
-  } catch {}
-});
-page.exposeFunction && await page.exposeFunction('playwrightAddLink', add);
-page.on('pageerror', ()=>{});
+  /* Сохраняем все .js ответы и тут же сканируем их на deep-link строки -------- */
+  const CANDS = new Set();
+  const URL_RE = /[a-z][\\w+.-]*:\\/\\/[\\w@%./#?+=~-]{6,}/gi;
+  const SKIP_RE = /^(https?|wss?|file|data:image)/i;
 
-/********************  Network hooks  ******************/
-page.on('request', r => {
-  const u = r.url();
-  const m = /\/deep\.html\?([a-z0-9_\-]+)/i.exec(u);
-  if (m) add(`${m[1]}://`);
-});
-page.on('response', async resp => {
-  try {
-    const url = resp.url();
-    const ct  = resp.headers()['content-type'] || '';
-    if (ct.includes('javascript') || url.endsWith('.js')) {
+  page.on('response', async resp => {
+    try {
+      if (resp.request().resourceType() !== 'script') return;
       const body = await resp.text();
-      await fs.writeFile('/tmp/js-sniff/' + path.basename(url.split('?')[0]), body).catch(()=>{});
-      (body.match(/([\w.+-]+:\/\/[\w@%./#?=&~;-]{6,})/g) || []).forEach(add);
-    }
+      for (const m of body.matchAll(URL_RE)) {
+        const u = m[0];
+        if (!SKIP_RE.test(u)) CANDS.add(u);
+      }
+    } catch {}
+  });
+
+  /* Навигация + клик по вашей кнопке  ---------------------------------------- */
+  await page.goto(URL, { waitUntil: 'networkidle' });
+
+  // специально указанная кнопка
+  try {
+    await page.locator('xpath=//*[@id="app"]/main/div[2]/div[1]/button')
+             .first().click({ timeout: 5000 });
   } catch {}
-});
+  // запасные эвристики
+  await page.click('text=/pay|оплатить/i').catch(()=>{});
+  await page.click('text=/sber pay/i').catch(()=>{});
 
-/********************  Main flow  **********************/
-await page.goto(TARGET_URL, { waitUntil: 'networkidle' }).catch(()=>{});
-await page.click('text=/pay|оплатить/i').catch(()=>{});
-await page.click('text=/sber pay/i').catch(()=>{});
-await page.waitForTimeout(TIMEOUT);
+  await page.waitForTimeout(TIME);
 
-await browser.close();
-const out = JSON.stringify([...links], null, 2);
-if (OUT_FILE) await fs.writeFile(OUT_FILE, out);
-console.log(out);
+  await browser.close();
+
+  /* ---------- Вывод результата ---------------------------------------------- */
+  const result = Array.from(CANDS).sort();
+  if (OUT) fs.writeFileSync(OUT, JSON.stringify(result, null, 2));
+  else     console.log(JSON.stringify(result, null, 2));
+})();

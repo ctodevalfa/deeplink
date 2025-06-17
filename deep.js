@@ -107,13 +107,13 @@ function toCents(amount) {
     const sum     = Math.round(amount * 100);
 
     if (platform === 'ios') {
-      // Для iOS добавляем больше схем на основе рабочего примера
+      // Используем схемы в том порядке, как они работают у пользователя
       const schemes = [
-        'sberbankonline',
-        'sbolonline', 
-        'iosappsmartonline',
-        'budgetonline',
-        'btripsexpenses'
+        'sberbankonline',  // основная схема
+        'sbolonline',      // проверенная альтернатива
+        'iosappsmartonline', // iOS Smart Online
+        'budgetonline',    // Budget Online  
+        'btripsexpenses'   // Business Trips
       ];
       
       const links = [];
