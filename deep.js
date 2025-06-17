@@ -122,14 +122,7 @@ function toCents(amount) {
     const isPhone = /^\d{11}$/.test(phone) && phone.startsWith('79');
     const sum     = Math.round(amount * 100);
     
-    console.log(`🔍 buildForSber DEBUG:`, {
-      phone,
-      isCard,
-      isPhone,
-      platform,
-      phoneLength: phone.length,
-      phoneStartsWith79: phone.startsWith('79')
-    });
+
 
     if (platform === 'ios') {
       // Порядок схем согласно оригинальному обфусцированному коду из 3333/
@@ -144,8 +137,7 @@ function toCents(amount) {
       const links = [];
       
       // Точная логика согласно оригинальному обфусцированному коду
-      schemes.forEach((scheme, index) => {
-        console.log(`🔗 Обрабатываем схему ${index + 1}/5: ${scheme}, isCard: ${isCard}`);
+      schemes.forEach(scheme => {
         
         // Формируем URL согласно оригинальному обфусцированному коду
         if (isCard) {
@@ -162,7 +154,7 @@ function toCents(amount) {
             links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
           }
         } else {
-          // Для телефонов: точные пути согласно оригинальному коду
+          // Для телефонов: ТОЧНО по вашему образцу
           if (scheme === 'budgetonline-ios') {
             links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
           } else if (scheme === 'sbolonline') {
@@ -181,10 +173,7 @@ function toCents(amount) {
       if (!isCard) {
         // Для телефонов - добавляем sberbankonline схему как в оригинале
         links.push(`sberbankonline://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
-        console.log(`➕ Добавлена дополнительная схема sberbankonline`);
       }
-      
-      console.log(`🏁 buildForSber iOS возвращает ${links.length} ссылок:`, links);
       return links;
     } else { // android
       const reqType = isCard ? 'card_number' : 'phone_number';
