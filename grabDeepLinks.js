@@ -1,206 +1,146 @@
-/* ---------------------------------------------------------------------------
-   sbpDeepLinks.js   –   универсальный генератор deep-link’ов под банки РФ/СНГ
-   Экспортирует:
-     • generateDeepLinks(opts)     → массив ссылок (mobile-flow, приоритеты)
-     • generateDesktopLink(opts)   → https-URL для десктоп-браузера или null
-     • deepHtmlAliasToScheme(key)  → мэппер alias → scheme (deep.html/?alias)
-   ------------------------------------------------------------------------- */
+/* ===========================================================================
+   grabDeepLinks.js   –   вытягивает deep-link URL-ы (intent://, sberbankonline:// …)
+   из одностраничных платёжных сайтов.
+   Автор: 17 июня 2025 • Rev 9c
+============================================================================ */
 
-   const DEFAULT_BANK = 'ru_sberbank';     // если не передали bank
-   const ua       = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-   const PLATFORM =
-    /iPhone|iPad|iPod/i.test(ua) ? 'ios' :
-    /Android/i.test(ua)          ? 'android' :
-    'desktop';
-   /* ---------------------------------------------------------------------------
-      Карта схем для каждого банка
-      Для iOS массив alias-ов перебирается до первого успешного открытия,
-      для Android обычно достаточно intent:// + android-app://
-   --------------------------------------------------------------------------- */
-   const BANK_SCHEMES = {
-     /* ----- Сбербанк --------------------------------------------------------- */
-     ru_sberbank: {
-       ios: [
-         'sberbankonline://',
-         'sbolonline://',
-         'ios-app-smartonline://',
-         'budgetonline-ios://',
-         'btripsexpenses://'
-       ].map(base => ({
-         phone: p => `${base}payments/p2p-by-phone-number?phoneNumber=${p}`,
-         card : (c,a) => `${base}p2ptransfer?amount=${a}&isNeedToOpenNextScreen=true`
-                       + `&skipContactsScreen=true&to=${c}&type=cardNumber`
-       })),
-       android: [
-         (p) => `intent://ru.sberbankmobile/payments/p2p?type=phone_number`
-              + `&requisiteNumber=${p}#Intent;scheme=https;end`,
-         (c,a) => `intent://ru.sberbankmobile/payments/p2p?type=card_number`
-                + `&requisiteNumber=${c}&amount=${a}#Intent;scheme=https;end`,
-         (p) => `android-app://ru.sberbankmobile/payments/p2p?type=phone_number`
-              + `&requisiteNumber=${p}`,
-       ],
-       foreign: {                      // «Перевод за рубеж»
-         ios:   alias => `${alias}abroadtransfers/foreignbank`,
-         android: () => 'intent://ru.sberbankmobile/transfers/abroad/foreignbank'
-                       + '#Intent;scheme=https;end'
-       }
-     },
-   
-     /* ----- Тинькофф --------------------------------------------------------- */
-     ru_tinkoff: {
-       ios: [
-         'tinkoffpay://',           'freelancecase://Main/',
-         'tbank://Main/',           'yourmoney://Main/',
-         'feedaways://Main/',       'toffice://Main/',
-         'tguard://Main/',          'mobtrs://Main/',
-         'goaloriented://Main/',    'tmydocs://Main/',
-         'tfinstudy://Main/',       'tsplit://Main/',
-         'tfinskills://Main/'
-       ].map(prefix => ({
-         phone: (p,a,member) => `${prefix}PayByMobileNumber?numberPhone=%2B${p}`
-                               + `&amount=${a}${member ? '&bankMemberId='+member : ''}`,
-         card : (c,a)         => `${prefix}Pay/C2C?amount=${a}&targetCardNumber=${c}`
-                               + `&numberCard=${c}`
-       })),
-       android: [
-         (p,a,m) => `intent://ru.tinkoff.payment/p2p?type=phone_number`
-                  + `&phone=${p}&amount=${a}&memberId=${m}#Intent;scheme=https;end`,
-         (c,a)   => `intent://ru.tinkoff.payment/p2p?type=card_number`
-                  + `&card=${c}&amount=${a}#Intent;scheme=https;end`
-       ]
-     },
-   
-     /* ----- ВТБ -------------------------------------------------------------- */
-     ru_vtb: {
-       ios:   p => `https://online.vtb.ru/i/ppl/${p}`,          // откроется как Universal Link
-       android: p => `https://online.vtb.ru/i/ppl/${p}`,
-       transborder: ({ phone, countryIso='TJ', countryCode='73' }) =>
-         `https://online.vtb.ru/i/phone/${countryIso}/${countryCode}/?phoneNumber=${phone}&deeplink=true`
-     },
-   
-     /* ----- BirBank (Kapital Bank, AZ) -------------------------------------- */
-     az_birbank: {
-       ios:  p => `birbank://payments/p2p?phone=${p}`,
-       android: p => `intent://az.kapitalbank.mobile/payments/p2p?phone=${p}`
-                   + '#Intent;scheme=https;end'
-     },
-   
-     /* ----- M10 (пилот) ------------------------------------------------------ */
-     m10: {
-       ios: p => `m10://p2p?phone=${p}`,
-       android: p => `intent://m10/payments/p2p?phone=${p}#Intent;scheme=https;end`
-     }
-   };
-   
-   /* ---------------------------------------------------------------------------
-      Вспомогательные утилиты
-   --------------------------------------------------------------------------- */
-   const toKopecks = v => Math.round(parseFloat(v) * 100);
-   const normPhone = p => (p+'').replace(/[^\d]/g,'').replace(/^8/,'7');
-   const isPhone   = s => /^\d{11}$/.test(s) && s.startsWith('79');
-   const isCard    = s => /^\d{16}$/.test(s);
-   
-   /* ---------------------------------------------------------------------------
-      Основной экспорт – generateDeepLinks
-   --------------------------------------------------------------------------- */
-   export function generateDeepLinks({
-     phone,                // телефон либо номер карты
-     amount  = 0,
-     bank    = DEFAULT_BANK,
-     bankMemberId,
-     isTransborder = false,
-     platform = PLATFORM,  // 'ios','android','desktop'
-     countryIso,
-     countryCode
-   } = {}) {
-     const result = [];
-   
-     const phoneN = normPhone(phone);
-     const card   = phone;        // если это карта, не трогаем
-   
-     const sumKop = toKopecks(amount);
-   
-     const cfg = BANK_SCHEMES[bank];
-     if (!cfg) return result;
-   
-     /* ---------- ВТБ transborder ------------------------------------------- */
-     if (bank === 'ru_vtb' && isTransborder)
-       return [ cfg.transborder({ phone: phoneN, countryIso, countryCode }) ];
-   
-     /* ---------- Сбер foreignbank ----------------------------------------- */
-     if (bank === 'ru_sberbank' && isTransborder) {
-       const aliases = BANK_SCHEMES.ru_sberbank.ios   // iOS-alias-массив
-                         .map(o=>o.phone)             // берём base-scheme
-                         .map(fn=>fn(''))             // → 'scheme://'
-                         .map(s => s.replace(/\/payments.*$/i, '')); // чистим хвост
-       if (platform === 'ios')
-         return aliases.map(a => cfg.foreign.ios(a));
-       return [ cfg.foreign.android() ];
-     }
-   
-     /* ---------- Обычные P2P ---------------------------------------------- */
-     if (platform === 'ios') {
-       const arr = cfg.ios ?? [];
-       arr.forEach(item => {
-         if (isPhone(phoneN) && item.phone)
-           result.push(item.phone(phoneN, sumKop, bankMemberId));
-         else if (isCard(card) && item.card)
-           result.push(item.card(card, sumKop, bankMemberId));
-         else if (typeof item === 'function')
-           result.push(item(phoneN, sumKop, bankMemberId));
-       });
-     } else if (platform === 'android') {
-       const arr = cfg.android ?? [];
-       arr.forEach(fn => {
-         if (typeof fn === 'function')
-           result.push(fn(isPhone(phoneN)?phoneN:card, sumKop, bankMemberId));
-       });
-     }
-   
-     return [...new Set(result)];      // убираем дубликаты
-   }
-   
-   /* ---------------------------------------------------------------------------
-      Десктоп-линк (browser-flow). Сейчас реальный только для ВТБ.
-   --------------------------------------------------------------------------- */
-   export function generateDesktopLink({
-     phone,
-     amount,
-     bank = DEFAULT_BANK,
-     isTransborder = false,
-     countryIso,
-     countryCode
-   } = {}) {
-     if (bank === 'ru_vtb') {
-       if (isTransborder) {
-         return BANK_SCHEMES.ru_vtb.transborder({
-           phone: normPhone(phone),
-           countryIso,
-           countryCode
-         });
-       }
-       return BANK_SCHEMES.ru_vtb.ios(normPhone(phone));  // универсальный link
-     }
-     return null;              // для Сбера/Тинькофф → QR СБП
-   }
-   
-   /* ---------------------------------------------------------------------------
-      deepHtmlAliasToScheme – маппинг alias из /deep.html?<alias>
-   --------------------------------------------------------------------------- */
-   const ALIAS_MAP = {
-     sberbankonline:  'sberbankonline://',
-     sbolonline:      'sberbankonline://',
-     iosappsmartonline:'ios-app-smartonline://',
-     budgetonline:    'budgetonline-ios://',
-     btripsexpenses:  'btripsexpenses://',
-     tinkoffpay:      'tinkoffpay://',
-     birbank:         'birbank://',
-     m10:             'm10://',
-     noapp:           null
-   };
-   export const deepHtmlAliasToScheme = key => ALIAS_MAP[key] ?? null;
-   
-   /* ---------------------------------------------------------------------------
-      CJS fallback (require) --------------------------------------------------- */
-   export default { generateDeepLinks, generateDesktopLink, deepHtmlAliasToScheme };
-   
+import fs from 'node:fs';
+import { chromium, devices } from 'playwright';
+
+/* ---------- ПАРАМЕТРЫ CLI ------------------------------------------------- */
+const [,, URL] = process.argv;
+if (!URL) {
+  console.error('Usage: node grabDeepLinks.js <url> [--out=file] [--headless=false] [--device="Pixel 7"] [--timeout=30000]');
+  process.exit(1);
+}
+
+const OUT      = arg('--out')      ?? null;      // файл-вывода JSON
+const HEADLESS = arg('--headless') === 'false' ? false : true;
+const DEVICE   = arg('--device')   ?? 'iPhone 13 Pro';
+const TIMEOUT  = Number(arg('--timeout') ?? 20000);
+
+/* ---------- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ CLI-ФЛАГОВ ----------------------- */
+function arg(name) {
+  const a = process.argv.find(x => x.startsWith(name + '='));
+  return a ? a.split('=').slice(1).join('=') : null;
+}
+
+/* ---------- СНИФФЕР (вставляется в каждый фрейм) ------------------------- */
+const SNIF_SRC = String(() => {
+  const _seen = new Set();
+  const log   = u => {
+    if (!_seen.has(u)) {
+      _seen.add(u);
+      console.log('[DL]', u);
+    }
+  };
+
+  /* Location.href / assign / replace */
+  ['assign', 'replace'].forEach(m => {
+    const orig = Location.prototype[m];
+    Location.prototype[m] = function (url) { log(url); return orig.call(this, url); };
+  });
+  Object.defineProperty(Location.prototype, 'href', {
+    set(url) { log(url); return url; },
+    get()    { return ''; }
+  });
+
+  /* window.open */
+  const oOpen = window.open;
+  window.open = function (u, ...rest) { log(u); return oOpen.call(this, u, ...rest); };
+
+  /* history.push/replaceState */
+  ['pushState', 'replaceState'].forEach(m => {
+    const o = history[m];
+    history[m] = function (...a) { log(location.href); return o.apply(this, a); };
+  });
+
+  /* клики по ссылкам */
+  addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (a) log(a.href);
+  }, true);
+});           // ⬅ превращаем функцию в строку
+
+/* ---------- REGEXP для статического поиска в JS-бандлах ------------------ */
+const URL_RE  = /[a-z][\w+.-]*:\/\/[\w@%./#?+=~-]{6,}/gi;
+const SKIP_RE = /^(https?|wss?|file|data:image)/i;
+
+/* ---------- ОСНОВНАЯ ФУНКЦИЯ --------------------------------------------- */
+(async () => {
+  console.log('🟢  Launching Playwright …');
+
+  const iphone  = devices[DEVICE] ?? devices['iPhone 13 Pro'];
+  const browser = await chromium.launch({ headless: HEADLESS });
+  const ctx     = await browser.newContext({ ...iphone, hasTouch: true });
+  const page    = await ctx.newPage();
+
+  /* — инъектируем сниффер в главный документ */
+  await page.addInitScript({ content: `(${SNIF_SRC})()` });
+
+  /* — инъектируем в новые фреймы */
+  page.on('frameattached', f => {
+    try {
+      if (typeof f.addInitScript === 'function') {
+        return f.addInitScript({ content: `(${SNIF_SRC})()` });
+      }
+      return f.evaluate(`(${SNIF_SRC})()`).catch(() => {});
+    } catch {}
+  });
+
+  /* — статический разбор всех .js-ответов */
+  const CANDS = new Set();
+  page.on('response', async resp => {
+    try {
+      if (resp.request().resourceType() !== 'script') return;
+      const txt = await resp.text();
+      for (const m of txt.matchAll(URL_RE)) {
+        const u = m[0];
+        if (!SKIP_RE.test(u)) CANDS.add(u);
+      }
+    } catch {}
+  });
+
+  /* ---------- НАВИГАЦИЯ К СТРАНИЦЕ -------------------------------------- */
+  await page.goto(URL, { waitUntil: 'networkidle' });
+
+  /* ---------- КЛИК ПО КНОПКЕ «Оплатить» ---------------------------------- */
+  console.log('🟢  looking for pay-button …');
+  try {
+    // XPath, который вы присылали
+    await page.locator('xpath=//*[@id="app"]/main/div[2]/div[1]/button')
+              .first().click({ timeout: 8000 });
+    console.log('✅  pay-button clicked (XPath)');
+  } catch {
+    // fallback-эвристики
+    const alt = await page.getByRole('button', { name: /pay|оплатить|sber pay/i }).first();
+    if (await alt.count()) {
+      await alt.click().catch(() => {});
+      console.log('✅  pay-button clicked (heuristic)');
+    } else {
+      console.warn('⚠️  pay-button not found');
+    }
+  }
+
+  /* ---------- ЖДЁМ, собираем ссылки ------------------------------------- */
+  await page.waitForTimeout(TIMEOUT);
+  if (!CANDS.size) {
+    console.warn('⚠️  no links yet – waiting 20 s more …');
+    await page.waitForTimeout(20000);
+  }
+
+  /* ---------- ВЫВОД РЕЗУЛЬТАТА ------------------------------------------ */
+  const out = Array.from(CANDS).sort();
+  if (OUT) {
+    fs.writeFileSync(OUT, JSON.stringify(out, null, 2));
+    console.log(`💾  saved ${out.length} link(s) → ${OUT}`);
+  } else {
+    console.log(JSON.stringify(out, null, 2));
+  }
+
+  if (HEADLESS) await browser.close();
+  else {
+    console.log('⏸  Done. Press Ctrl-C to exit.');
+    await new Promise(() => {});        // держим окно открытым
+  }
+})();

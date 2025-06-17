@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест схемы sbolonline://</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 20px;
+            margin: 5px;
+            background: #007AFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            word-break: break-all;
+        }
+        .btn:active { background: #0056CC; }
+        .btn.card { background: #FF6B6B; }
+        .btn.phone { background: #4ECDC4; }
+        .btn.simple { background: #45B7D1; }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .url-display {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 5px 0;
+            border-left: 3px solid #007AFF;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Тест схемы sbolonline://</h1>
+    <p><strong>✅ Схема sbolonline:// работает!</strong> Теперь тестируем разные варианты URL.</p>
+    
+    <div class="test-section">
+        <h3>Параметры теста:</h3>
+        <label>Телефон: <input type="text" id="phone" value="79991234567" placeholder="79991234567"></label><br><br>
+        <label>Номер карты: <input type="text" id="card" value="1234567890123456" placeholder="1234567890123456"></label><br><br>
+        <label>Сумма: <input type="text" id="amount" value="100" placeholder="100"></label>
+    </div>
+    
+    <div class="test-section">
+        <h3>Тест 1: Базовые варианты для телефона</h3>
+        <button class="btn phone" onclick="testUrl('sbolonline://payments/p2p-by-phone-number?phoneNumber={phone}')">
+            Базовый телефон
+        </button>
+        <button class="btn phone" onclick="testUrl('sbolonline://payments/p2p?type=phone_number&requisiteNumber={phone}')">
+            P2P телефон
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Тест 2: Варианты для карты</h3>
+        <button class="btn card" onclick="testUrl('sbolonline://p2ptransfer?amount={amount_cents}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to={card}&type=cardNumber')">
+            P2P перевод на карту
+        </button>
+        <button class="btn card" onclick="testUrl('sbolonline://payments/p2ptransfer?amount={amount_cents}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to={card}&type=cardNumber')">
+            Payments P2P карта
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Тест 3: Комбинированные схемы из кода</h3>
+        <button class="btn" onclick="testUrl('budgetonline-ios://sbolonline/payments/p2p-by-phone-number?phoneNumber={phone}')">
+            budgetonline-ios://sbolonline/
+        </button>
+        <button class="btn" onclick="testUrl('ios-app-smartonline://sbolonline/payments/p2p-by-phone-number?phoneNumber={phone}')">
+            ios-app-smartonline://sbolonline/
+        </button>
+        <button class="btn" onclick="testUrl('app-online-ios://payments/p2p-by-phone-number?phoneNumber={phone}')">
+            app-online-ios://payments/
+        </button>
+        <button class="btn" onclick="testUrl('btripsexpenses://sbolonline/payments/p2p-by-phone-number?phoneNumber={phone}')">
+            btripsexpenses://sbolonline/
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Тест 4: Простые схемы</h3>
+        <button class="btn simple" onclick="testUrl('sbolonline://')">
+            Просто sbolonline://
+        </button>
+        <button class="btn simple" onclick="testUrl('sbolonline://main')">
+            sbolonline://main
+        </button>
+        <button class="btn simple" onclick="testUrl('sbolonline://home')">
+            sbolonline://home
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Тест 5: Автоматический перебор всех вариантов</h3>
+        <button class="btn" onclick="autoTestAll()" style="background: #28a745; font-size: 16px; padding: 15px 25px;">
+            🚀 Автотест всех вариантов
+        </button>
+        <button class="btn" onclick="stopAutoTest()" style="background: #dc3545;">
+            ⏹️ Остановить
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Результаты:</h3>
+        <div id="result"></div>
+        <div id="current-url" class="url-display" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Логи:</h3>
+        <div id="log" class="result info" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></div>
+        <button class="btn" onclick="clearLog()" style="background: #6c757d;">Очистить логи</button>
+    </div>
+
+    <script>
+        let logMessages = [];
+        let autoTestRunning = false;
+        let autoTestIndex = 0;
+        
+        // Все варианты URL для автотеста
+        const testUrls = [
+            // Основные варианты для телефона
+            'sbolonline://payments/p2p-by-phone-number?phoneNumber={phone}',
+            'sbolonline://payments/p2p?type=phone_number&requisiteNumber={phone}',
+            
+            // Варианты для карты
+            'sbolonline://p2ptransfer?amount={amount_cents}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to={card}&type=cardNumber',
+            'sbolonline://payments/p2ptransfer?amount={amount_cents}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to={card}&type=cardNumber',
+            
+            // Комбинированные схемы
+            'budgetonline-ios://sbolonline/payments/p2p-by-phone-number?phoneNumber={phone}',
+            'ios-app-smartonline://sbolonline/payments/p2p-by-phone-number?phoneNumber={phone}',
+            'app-online-ios://payments/p2p-by-phone-number?phoneNumber={phone}',
+            'btripsexpenses://sbolonline/payments/p2p-by-phone-number?phoneNumber={phone}',
+            
+            // Простые
+            'sbolonline://',
+            'sbolonline://main',
+            'sbolonline://home',
+            'sbolonline://payments',
+            'sbolonline://p2p'
+        ];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            logMessages.push(logMessage);
+            
+            const logDiv = document.getElementById('log');
+            logDiv.textContent = logMessages.join('\n');
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            console.log(logMessage);
+        }
+        
+        function clearLog() {
+            logMessages = [];
+            document.getElementById('log').textContent = '';
+        }
+        
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+        
+        function showCurrentUrl(url) {
+            const urlDiv = document.getElementById('current-url');
+            urlDiv.style.display = 'block';
+            urlDiv.textContent = `Текущий URL: ${url}`;
+        }
+        
+        function processUrl(template) {
+            const phone = document.getElementById('phone').value;
+            const card = document.getElementById('card').value;
+            const amount = document.getElementById('amount').value;
+            const amountCents = Math.round(parseFloat(amount) * 100);
+            
+            return template
+                .replace(/{phone}/g, phone)
+                .replace(/{card}/g, card)
+                .replace(/{amount}/g, amount)
+                .replace(/{amount_cents}/g, amountCents);
+        }
+        
+        function testUrl(urlTemplate) {
+            const url = processUrl(urlTemplate);
+            log(`\n=== Тестируем URL ===`);
+            log(`Шаблон: ${urlTemplate}`);
+            log(`Готовый URL: ${url}`);
+            
+            showCurrentUrl(url);
+            showResult('🔄 Тестируем...', 'info');
+            
+            let startTime = Date.now();
+            let focusLost = false;
+            
+            function onBlur() {
+                const timeElapsed = Date.now() - startTime;
+                focusLost = true;
+                log(`✅ Фокус потерян через ${timeElapsed}ms - URL работает!`);
+                showResult(`✅ URL работает! Время: ${timeElapsed}ms`, 'success');
+                cleanup();
+            }
+            
+            function onFocus() {
+                if (focusLost) {
+                    log(`↩️ Фокус вернулся - пользователь вернулся из приложения`);
+                }
+            }
+            
+            function cleanup() {
+                window.removeEventListener('blur', onBlur);
+                window.removeEventListener('focus', onFocus);
+            }
+            
+            window.addEventListener('blur', onBlur);
+            window.addEventListener('focus', onFocus);
+            
+            try {
+                window.location.href = url;
+                
+                setTimeout(() => {
+                    if (!focusLost) {
+                        const timeElapsed = Date.now() - startTime;
+                        log(`❌ Через ${timeElapsed}ms фокус не потерян - URL не работает`);
+                        showResult(`❌ URL не работает`, 'error');
+                        cleanup();
+                    }
+                }, 3000);
+                
+            } catch (e) {
+                log(`❌ Ошибка: ${e.message}`);
+                showResult(`❌ Ошибка: ${e.message}`, 'error');
+                cleanup();
+            }
+        }
+        
+        function autoTestAll() {
+            if (autoTestRunning) {
+                log('Автотест уже запущен!');
+                return;
+            }
+            
+            autoTestRunning = true;
+            autoTestIndex = 0;
+            log('🚀 Начинаем автотест всех вариантов...');
+            showResult('🚀 Автотест запущен...', 'info');
+            
+            autoTestNext();
+        }
+        
+        function autoTestNext() {
+            if (!autoTestRunning || autoTestIndex >= testUrls.length) {
+                if (autoTestRunning) {
+                    log('🏁 Автотест завершен!');
+                    showResult('🏁 Автотест завершен!', 'success');
+                    autoTestRunning = false;
+                }
+                return;
+            }
+            
+            const urlTemplate = testUrls[autoTestIndex++];
+            const url = processUrl(urlTemplate);
+            
+            log(`\n--- Автотест ${autoTestIndex}/${testUrls.length} ---`);
+            log(`URL: ${url}`);
+            
+            showCurrentUrl(url);
+            showResult(`🔄 Автотест ${autoTestIndex}/${testUrls.length}: тестируем...`, 'info');
+            
+            let startTime = Date.now();
+            let focusLost = false;
+            
+            function onBlur() {
+                const timeElapsed = Date.now() - startTime;
+                focusLost = true;
+                log(`✅ УСПЕХ! URL работает: ${url}`);
+                showResult(`✅ Найден рабочий URL!`, 'success');
+                // Не останавливаем автотест, продолжаем
+                cleanup();
+                setTimeout(() => {
+                    if (autoTestRunning) autoTestNext();
+                }, 2000);
+            }
+            
+            function cleanup() {
+                window.removeEventListener('blur', onBlur);
+                window.removeEventListener('focus', onFocus);
+            }
+            
+            function onFocus() {
+                if (focusLost) {
+                    log(`↩️ Возврат из приложения`);
+                }
+            }
+            
+            window.addEventListener('blur', onBlur);
+            window.addEventListener('focus', onFocus);
+            
+            try {
+                window.location.href = url;
+                
+                setTimeout(() => {
+                    if (!focusLost && autoTestRunning) {
+                        log(`❌ URL не работает: ${url}`);
+                        cleanup();
+                        autoTestNext();
+                    }
+                }, 1500); // Быстрее для автотеста
+                
+            } catch (e) {
+                log(`❌ Ошибка: ${e.message}`);
+                cleanup();
+                autoTestNext();
+            }
+        }
+        
+        function stopAutoTest() {
+            autoTestRunning = false;
+            log('⏹️ Автотест остановлен');
+            showResult('⏹️ Автотест остановлен', 'info');
+        }
+        
+        // Инициализация
+        log('Тест схемы sbolonline:// загружен');
+        showResult('Готов к тестированию схемы sbolonline://', 'info');
+    </script>
+</body>
+</html>

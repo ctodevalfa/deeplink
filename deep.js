@@ -108,28 +108,44 @@ function toCents(amount) {
 
     if (platform === 'ios') {
       // Используем схемы в том порядке, как они работают у пользователя
+      // sbolonline:// - проверенная рабочая схема идет первой
       const schemes = [
-        'sberbankonline',  // основная схема
-        'sbolonline',      // проверенная альтернатива
+        'sbolonline',        // ✅ РАБОТАЕТ! Проверенная схема
+        'sberbankonline',    // основная схема  
+        'bank100000000111',  // новая схема для iOS
         'iosappsmartonline', // iOS Smart Online
-        'budgetonline',    // Budget Online  
-        'btripsexpenses'   // Business Trips
+        'budgetonline',      // Budget Online  
+        'btripsexpenses'     // Business Trips
       ];
       
       const links = [];
       
       schemes.forEach(scheme => {
         if (isCard) {
-          // Для карт
-          links.push(`${scheme}://p2ptransfer?amount=${sum}&to=${phone}&type=cardNumber&isNeedToOpenNextScreen=true&skipContactsScreen=true`);
-          // Альтернативный формат для карт
-          links.push(`${scheme}://payments/p2p?type=card_number&requisiteNumber=${phone}&amount=${sum}`);
+          // Для карт - варианты из обфусцированного кода
+          links.push(`${scheme}://p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+          links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
         } else {
-          // Для телефонов  
+          // Для телефонов - варианты из обфусцированного кода  
           links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
           links.push(`${scheme}://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
         }
       });
+      
+      // Добавляем комбинированные схемы из найденного кода
+      if (isCard) {
+        // Комбинированные схемы для карт
+        links.push(`budgetonline-ios://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+        links.push(`ios-app-smartonline://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+        links.push(`app-online-ios://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+        links.push(`btripsexpenses://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
+      } else {
+        // Комбинированные схемы для телефонов
+        links.push(`budgetonline-ios://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+        links.push(`ios-app-smartonline://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+        links.push(`app-online-ios://payments/p2p-by-phone-number?phoneNumber=${phone}`);
+        links.push(`btripsexpenses://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
+      }
       
       return links;
     } else { // android
