@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест ссылок Сбербанка</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .link { margin: 10px 0; padding: 10px; background: #f0f0f0; border-left: 3px solid #007AFF; }
+        .scheme { font-weight: bold; color: #007AFF; }
+        button { margin: 5px; padding: 10px 15px; background: #007AFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Тест ссылок Сбербанка</h1>
+    
+    <div>
+        <label>Телефон: <input type="text" id="phone" value="79381876034"></label>
+        <label>Сумма: <input type="text" id="amount" value="100"></label>
+        <button onclick="generateLinks()">Сгенерировать ссылки</button>
+        <button onclick="testAllLinks()">Тестировать все ссылки</button>
+    </div>
+
+    <div id="output"></div>
+
+    <script type="module">
+        import { buildForSber } from './src/banks/sberbank.js';
+        
+        window.generateLinks = function() {
+            const phone = document.getElementById('phone').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const platform = 'ios'; // Тестируем iOS
+            
+            const links = buildForSber({ phone, amount, platform });
+            
+            const output = document.getElementById('output');
+            output.innerHTML = '<h3>Сгенерированные ссылки для iOS:</h3>';
+            
+            links.forEach((link, index) => {
+                const schemeMatch = link.match(/^([^:]+):/);
+                const scheme = schemeMatch ? schemeMatch[1] : 'unknown';
+                
+                output.innerHTML += `
+                    <div class="link">
+                        <div class="scheme">${index + 1}. ${scheme}</div>
+                        <div>${link}</div>
+                        <button onclick="window.open('${link}', '_self')">Попробовать</button>
+                    </div>
+                `;
+            });
+        };
+        
+        window.testAllLinks = function() {
+            const phone = document.getElementById('phone').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const platform = 'ios';
+            
+            const links = buildForSber({ phone, amount, platform });
+            
+            let index = 0;
+            function tryNext() {
+                if (index < links.length) {
+                    console.log(`Попытка ${index + 1}: ${links[index]}`);
+                    window.location.href = links[index];
+                    index++;
+                    setTimeout(tryNext, 2000); // Пауза между попытками
+                }
+            }
+            
+            tryNext();
+        };
+        
+        // Автогенерация при загрузке
+        generateLinks();
+    </script>
+</body>
+</html> 

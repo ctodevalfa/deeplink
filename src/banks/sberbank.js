@@ -4,115 +4,45 @@
  */
 
 export function buildForSber({ phone, amount, platform }) {
-  const isCard  = /^\d{16}$/.test(phone);
-  const isPhone = /^\d{11}$/.test(phone) && phone.startsWith('79');
-  const sum     = Math.round(amount * 100);
-
+  const isCard = phone.length >= 16;
+  const normalizedPhone = phone.replace(/^\+/, ''); // убираем + если есть
+  const sum = Math.round(amount * 100); // в копейки
+  
   if (platform === 'ios') {
-    // Порядок схем согласно рабочему коду
-    const schemes = [
-      'budgetonline-ios',    // ✅ Корпоративный СБОЛ
-      'sbolonline',          // ✅ Базовая схема  
-      'ios-app-smartonline', // ✅ Smart-версия
-      'app-online-ios',      // ✅ Основная iOS схема
-      'btripsexpenses'       // ✅ Travel-клиент
+    return [
+      // 1. budgetonline-ios
+      `budgetonline-ios://sbolonline/${isCard ? 
+        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
+        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+      
+      // 2. sbolonline  
+      `sbolonline://payments/${isCard ? 
+        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
+        `p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+      
+      // 3. ios-app-smartonline
+      `ios-app-smartonline://sbolonline/${isCard ? 
+        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
+        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+      
+      // 4. app-online-ios
+      `app-online-ios://payments/${isCard ? 
+        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
+        `p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`,
+      
+      // 5. btripsexpenses
+      `btripsexpenses://sbolonline/${isCard ? 
+        `p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${normalizedPhone}&type=cardNumber` : 
+        `payments/p2p-by-phone-number?phoneNumber=${normalizedPhone}`}`
     ];
-    
-    const links = [];
-    
-    schemes.forEach(scheme => {
-      if (isCard) {
-        // Для карт: p2ptransfer с параметрами
-        if (scheme === 'budgetonline-ios') {
-          links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        } else if (scheme === 'sbolonline') {
-          links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        } else if (scheme === 'ios-app-smartonline') {
-          links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        } else if (scheme === 'app-online-ios') {
-          links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        } else if (scheme === 'btripsexpenses') {
-          links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        }
-      } else {
-        // Для телефонов
-        if (scheme === 'budgetonline-ios') {
-          links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        } else if (scheme === 'sbolonline') {
-          links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        } else if (scheme === 'ios-app-smartonline') {
-          links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        } else if (scheme === 'app-online-ios') {
-          links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        } else if (scheme === 'btripsexpenses') {
-          links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        }
-      }
-    });
-    
-    // Добавляем дополнительную схему для телефонов
-    if (!isCard) {
-      links.push(`sberbankonline://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
-    }
-    
-    return links;
-  } else { 
-    // Android логика
-    const reqType = isCard ? 'card_number' : 'phone_number';
-    const links = [];
-    
-    // Кроссплатформенные схемы (работают на Android)
-    const crossPlatformSchemes = [
-      'sberbankonline', 'sbolonline', 'ios-app-smartonline', 
-      'budgetonline-ios', 'btripsexpenses', 'app-online-ios'
+  } else {
+    // Android
+    return [
+      `intent://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=${normalizedPhone}#Intent;scheme=https;end`,
+      `android-app://ru.sberbankmobile/payments/p2p?type=phone_number&requisiteNumber=${normalizedPhone}`,
+      `intent://ru.sberbankmobile/android-app/payments/p2p?type=phone_number&requisiteNumber=${normalizedPhone}#Intent;scheme=https;end`,
+      `sberbankonline://payments/p2p?type=phone_number&requisiteNumber=${normalizedPhone}`
     ];
-    
-    crossPlatformSchemes.forEach(scheme => {
-      if (isCard) {
-        if (scheme === 'ios-app-smartonline') {
-          links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        } else if (scheme === 'budgetonline-ios' || scheme === 'btripsexpenses') {
-          links.push(`${scheme}://sbolonline/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        } else if (scheme === 'app-online-ios') {
-          links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        } else {
-          links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        }
-      } else {
-        if (scheme === 'ios-app-smartonline') {
-          links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        } else if (scheme === 'budgetonline-ios' || scheme === 'btripsexpenses') {
-          links.push(`${scheme}://sbolonline/payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        } else if (scheme === 'app-online-ios') {
-          links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        } else {
-          links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        }
-      }
-    });
-    
-    // Дополнительные Android схемы
-    const additionalAndroidSchemes = ['bank100000000111'];
-    
-    additionalAndroidSchemes.forEach(scheme => {
-      if (isCard) {
-        links.push(`${scheme}://p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-        links.push(`${scheme}://payments/p2ptransfer?amount=${sum}&isNeedToOpenNextScreen=true&skipContactsScreen=true&to=${phone}&type=cardNumber`);
-      } else {
-        links.push(`${scheme}://payments/p2p-by-phone-number?phoneNumber=${phone}`);
-        links.push(`${scheme}://payments/p2p?type=phone_number&requisiteNumber=${phone}`);
-      }
-    });
-    
-    // Intent-схемы для Android
-    const intentLinks = [
-      `intent://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}#Intent;scheme=https;end`,
-      `android-app://ru.sberbankmobile/payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`,
-      `sberbankonline://payments/p2p?type=${reqType}&requisiteNumber=${phone}${isCard ? `&amount=${sum}` : ''}`
-    ];
-    
-    links.push(...intentLinks);
-    return links;
   }
 }
 
