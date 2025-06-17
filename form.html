@@ -1789,7 +1789,7 @@
     function attemptLinks(links, currentBank) {
       let idx = 0;
       let stopped = false;
-      const delay = 1500; // мс между попытками
+      const delay = 500; // мс между попытками (как в рабочем примере)
       const device = getDeviceInfo();
 
       const tryNext = () => {
@@ -1817,7 +1817,7 @@
 
         const handleBlur = () => {
           // Если страница потеряла фокус быстро после клика, вероятно приложение открылось
-          if (Date.now() - startTime < 500) {
+          if (Date.now() - startTime < 300) {
             console.log(`✅ Приложение успешно открылось (blur)! Сохраняем схему: ${url}`);
             savePreferredScheme(currentBank, url);
             stopped = true;
@@ -1834,14 +1834,25 @@
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('blur', handleBlur);
 
-        if (device.isIOS) {
-          window.location = url;
-        } else {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = url;
-          document.body.appendChild(iframe);
-          setTimeout(() => iframe.remove(), delay - 100);
+        // Пробуем открыть ссылку
+        try {
+          if (device.isIOS) {
+            // На iOS используем window.location (как в рабочем примере)
+            window.location.href = url;
+          } else {
+            // На Android используем скрытый iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+            setTimeout(() => {
+              try {
+                iframe.remove();
+              } catch(e) {}
+            }, delay - 50);
+          }
+        } catch (e) {
+          console.log(`Ошибка при открытии ${url}:`, e);
         }
 
         // Убираем обработчики через некоторое время и пробуем следующую ссылку
